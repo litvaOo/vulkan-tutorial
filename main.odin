@@ -7,10 +7,15 @@ import vk "vendor:vulkan"
 Context :: struct {
   window: glfw.WindowHandle,
   instance : vk.Instance,
+  enable_validation_layers: bool,
 }
 
 main :: proc () {
   ctx : Context
+  ctx.enable_validation_layers = false
+  when ODIN_DEBUG {
+    ctx.enable_validation_layers = true
+  }
   init_window(&ctx)
   init_vulkan(&ctx)
 

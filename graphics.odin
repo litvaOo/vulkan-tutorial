@@ -34,3 +34,36 @@ create_vk_instance :: proc(ctx: ^Context) {
     panic("Failed creation")
   }
 }
+
+check_validation_layer_support :: proc (ctx: ^Context) -> bool {
+  when ODIN_DEBUG {
+    validation_layers : [][256]u8 // uninitialized because no default validation_layers are available
+    layer_count : u32
+    vk.EnumerateInstanceLayerProperties(&layer_count, nil)
+
+    available_layers := make([^]vk.LayerProperties, layer_count)
+    vk.EnumerateInstanceLayerProperties(&layer_count, available_layers)
+
+    for i := u32(0); i < layer_count; i += 1 {
+      fmt.printf("%s\n", available_layers[i].layerName)
+    }
+    fmt.println("Finished layer properties")
+
+    for layer in validation_layers {
+      layer_found := false
+
+      for i := u32(0); i < layer_count; i += 1 {
+        if available_layers[i].layerName == layer {
+          layer_found = true
+          break
+        }
+      }
+      
+      if !layer_found {
+        return false
+      }
+    }
+    return true
+  }
+  return true
+}

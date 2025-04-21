@@ -7,6 +7,9 @@ init_vulkan :: proc (ctx: ^Context) {
   // because odin does not automatically link correct vulkan addresses. sigh
   get_proc_addr := glfw.GetInstanceProcAddress(nil, "vkGetInstanceProcAddr")
   vk.load_proc_addresses_global(get_proc_addr)
+  if !check_validation_layer_support(ctx) {
+    panic("Missing required layers")
+  }
   create_vk_instance(ctx)
   vk.load_proc_addresses_instance(ctx.instance)
 }
