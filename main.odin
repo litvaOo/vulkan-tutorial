@@ -8,9 +8,11 @@ Context :: struct {
   window: glfw.WindowHandle,
   instance : vk.Instance,
   enable_validation_layers: bool,
+  surface: vk.SurfaceKHR,
   physical_device: vk.PhysicalDevice,
   logical_device: vk.Device,
   graphics_queue: vk.Queue,
+  present_queue: vk.Queue,
 }
 
 main :: proc () {
