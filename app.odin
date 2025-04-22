@@ -12,6 +12,8 @@ init_vulkan :: proc (ctx: ^Context) {
   }
   create_vk_instance(ctx)
   vk.load_proc_addresses_instance(ctx.instance)
+  pick_physical_device(ctx)
+  //vk.load_proc_addresses_device(ctx.physical_device)
 }
 
 main_loop :: proc(ctx: ^Context) {

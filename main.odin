@@ -8,6 +8,7 @@ Context :: struct {
   window: glfw.WindowHandle,
   instance : vk.Instance,
   enable_validation_layers: bool,
+  physical_device: vk.PhysicalDevice,
 }
 
 main :: proc () {

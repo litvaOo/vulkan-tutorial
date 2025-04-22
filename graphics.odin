@@ -67,3 +67,33 @@ check_validation_layer_support :: proc (ctx: ^Context) -> bool {
   }
   return true
 }
+
+pick_physical_device :: proc (ctx: ^Context) {
+  device_count : u32
+  vk.EnumeratePhysicalDevices(ctx.instance, &device_count, nil)
+  if device_count == 0 {
+    panic("No vulkan devices")
+  }
+  devices := make([^]vk.PhysicalDevice, device_count)
+  vk.EnumeratePhysicalDevices(ctx.instance, &device_count, devices)
+  for i := u32(0); i < device_count; i += 1 {
+    if (is_device_suitable(ctx, devices[i])) {
+      ctx.physical_device = devices[i]
+      break
+    }
+  }
+  if ctx.physical_device == nil {
+    panic("No suitable vulkan device")
+  }
+}
+
+is_device_suitable :: proc (ctx: ^Context, device: vk.PhysicalDevice) -> bool {
+  device_properties : vk.PhysicalDeviceProperties
+  device_features : vk.PhysicalDeviceFeatures
+  vk.GetPhysicalDeviceProperties(device, &device_properties)
+  vk.GetPhysicalDeviceFeatures(device, &device_features)
+
+  find_queue_families(ctx, device) or_return
+  // using INTEGRATED_GPU instead of DISCRETE_GPU because developing on asahi
+  return device_properties.deviceType == vk.PhysicalDeviceType.INTEGRATED_GPU && device_features.geometryShader == true
+}
