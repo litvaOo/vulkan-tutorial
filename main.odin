@@ -9,6 +9,8 @@ Context :: struct {
   instance : vk.Instance,
   enable_validation_layers: bool,
   physical_device: vk.PhysicalDevice,
+  logical_device: vk.Device,
+  graphics_queue: vk.Queue,
 }
 
 main :: proc () {

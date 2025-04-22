@@ -97,3 +97,35 @@ is_device_suitable :: proc (ctx: ^Context, device: vk.PhysicalDevice) -> bool {
   // using INTEGRATED_GPU instead of DISCRETE_GPU because developing on asahi
   return device_properties.deviceType == vk.PhysicalDeviceType.INTEGRATED_GPU && device_features.geometryShader == true
 }
+
+
+create_logical_device :: proc (ctx: ^Context) {
+  queue_create_info : vk.DeviceQueueCreateInfo
+  queue_family_indices := find_queue_families(ctx, ctx.physical_device) or_else panic("No queue indices")
+
+  {
+    queue_create_info.sType = vk.StructureType.DEVICE_QUEUE_CREATE_INFO
+    queue_create_info.queueFamilyIndex = queue_family_indices.graphics_family
+    queue_create_info.queueCount = 1
+    queue_priorities := make([^]f32, 1)
+    queue_priorities[0] = 1.0
+    queue_create_info.pQueuePriorities = queue_priorities
+  }
+
+  device_features : vk.PhysicalDeviceFeatures
+  device_create_info : vk.DeviceCreateInfo
+  {
+    device_create_info.sType = vk.StructureType.DEVICE_CREATE_INFO
+    device_create_info.pQueueCreateInfos = &queue_create_info
+    device_create_info.queueCreateInfoCount = 1
+    device_create_info.pEnabledFeatures = &device_features
+    device_create_info.enabledExtensionCount = 0
+    device_create_info.enabledLayerCount = 0
+  }
+
+  if vk.CreateDevice(ctx.physical_device, &device_create_info, nil, &ctx.logical_device) != vk.Result.SUCCESS {
+    panic("Failed to create a logical device")
+  }
+
+  vk.GetDeviceQueue(ctx.logical_device, queue_family_indices.graphics_family, 0, &ctx.graphics_queue)
+}
