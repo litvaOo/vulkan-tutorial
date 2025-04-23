@@ -1,9 +1,15 @@
 package main
 
 import "core:fmt"
+import "core:strings"
+import "base:runtime"
+import "core:slice"
 import vk "vendor:vulkan"
 import glfw "vendor:glfw"
 import glfw_bindings "vendor:glfw/bindings"
+
+
+device_extensions := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME}
 
 create_vk_instance :: proc(ctx: ^Context) {
   app_info: vk.ApplicationInfo
@@ -93,8 +99,28 @@ is_device_suitable :: proc (ctx: ^Context, device: vk.PhysicalDevice) -> bool {
   vk.GetPhysicalDeviceProperties(device, &device_properties)
   vk.GetPhysicalDeviceFeatures(device, &device_features)
 
-  // using INTEGRATED_GPU instead of DISCRETE_GPU because developing on asahi
-  return device_properties.deviceType == vk.PhysicalDeviceType.INTEGRATED_GPU && device_features.geometryShader == true
+  find_queue_families(ctx, device) or_return
+  check_device_extension_support(ctx, device) or_return
+  return true
+}
+
+check_device_extension_support :: proc(ctx: ^Context, device: vk.PhysicalDevice) -> bool {
+  extension_count := u32(0)
+  vk.EnumerateDeviceExtensionProperties(device, nil, &extension_count, nil)
+  available_extensions := make([]vk.ExtensionProperties, extension_count)
+  vk.EnumerateDeviceExtensionProperties(device, nil, &extension_count, raw_data(available_extensions))
+
+  outer_loop: for device_extension in device_extensions {
+    for extension in available_extensions {
+      bytes := extension.extensionName
+      ext_name := strings.clone_from_bytes(bytes[:len(device_extension)])
+      if string(device_extension) == ext_name {
+        continue outer_loop
+      }
+    }
+    return false
+  }
+  return true
 }
 
 create_logical_device :: proc (ctx: ^Context) {
@@ -124,7 +150,8 @@ create_logical_device :: proc (ctx: ^Context) {
     device_create_info.pQueueCreateInfos = raw_data(queue_create_infos)
     device_create_info.queueCreateInfoCount = u32(len(&queue_create_infos))
     device_create_info.pEnabledFeatures = &device_features
-    device_create_info.enabledExtensionCount = 0
+    device_create_info.enabledExtensionCount = u32(len(device_extensions))
+    device_create_info.ppEnabledExtensionNames = raw_data(device_extensions)
     device_create_info.enabledLayerCount = 0
   }
 
