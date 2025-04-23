@@ -101,6 +101,9 @@ is_device_suitable :: proc (ctx: ^Context, device: vk.PhysicalDevice) -> bool {
 
   find_queue_families(ctx, device) or_return
   check_device_extension_support(ctx, device) or_return
+
+  swap_chain_support := query_swap_chain_support(ctx, device)
+  if (swap_chain_support.formats == nil || swap_chain_support.present_modes == nil) do return false
   return true
 }
 
@@ -167,4 +170,61 @@ create_surface :: proc (ctx: ^Context) {
   if glfw.CreateWindowSurface(ctx.instance, ctx.window, nil, &ctx.surface) != vk.Result.SUCCESS {
     panic("Failed to create window surface")
   }
+}
+
+create_swap_chain :: proc(ctx: ^Context) {
+  swap_chain_support := query_swap_chain_support(ctx, ctx.physical_device)
+
+  surface_format := choose_swap_surface_format(ctx, swap_chain_support.formats)
+  present_mode := choose_swap_present_mode(ctx, swap_chain_support.present_modes)
+  extent := choose_swap_extent(ctx, &swap_chain_support.capabilities)
+  
+  image_count := swap_chain_support.capabilities.minImageCount + 1
+
+  if swap_chain_support.capabilities.maxImageCount > 0 &&
+    image_count > swap_chain_support.capabilities.maxImageCount {
+      image_count = swap_chain_support.capabilities.maxImageCount
+    }
+
+  swapchain_create_info : vk.SwapchainCreateInfoKHR
+  { 
+    swapchain_create_info.sType = vk.StructureType.SWAPCHAIN_CREATE_INFO_KHR
+    swapchain_create_info.surface = ctx.surface
+    swapchain_create_info.minImageCount = image_count
+    swapchain_create_info.imageFormat = surface_format.format
+    swapchain_create_info.imageColorSpace = surface_format.colorSpace
+    swapchain_create_info.imageExtent = extent
+    swapchain_create_info.imageArrayLayers = 1
+    swapchain_create_info.imageUsage = vk.ImageUsageFlags{vk.ImageUsageFlag.COLOR_ATTACHMENT}
+
+    {
+      indices := find_queue_families(ctx, ctx.physical_device) or_else panic("No queue families")
+      if indices.graphics_family != indices.present_family {
+        swapchain_create_info.imageSharingMode = vk.SharingMode.CONCURRENT
+        swapchain_create_info.queueFamilyIndexCount = 2
+        swapchain_create_info.pQueueFamilyIndices = raw_data([]u32{indices.graphics_family, indices.present_family})
+      } else {
+        swapchain_create_info.imageSharingMode = vk.SharingMode.EXCLUSIVE
+        swapchain_create_info.queueFamilyIndexCount = 0
+        swapchain_create_info.pQueueFamilyIndices = nil
+      }
+    }
+
+    swapchain_create_info.preTransform = swap_chain_support.capabilities.currentTransform
+    swapchain_create_info.compositeAlpha = vk.CompositeAlphaFlagsKHR{vk.CompositeAlphaFlagKHR.OPAQUE}
+    swapchain_create_info.presentMode = present_mode
+    swapchain_create_info.clipped = true
+    swapchain_create_info.oldSwapchain = 0
+  }
+
+  if vk.CreateSwapchainKHR(ctx.logical_device, &swapchain_create_info, nil, &ctx.swap_chain) != vk.Result.SUCCESS {
+    panic("Failed to create swapchain")
+  }
+
+  vk.GetSwapchainImagesKHR(ctx.logical_device, ctx.swap_chain, &image_count, nil)
+  ctx.swap_chain_images = make([dynamic]vk.Image, image_count)
+  vk.GetSwapchainImagesKHR(ctx.logical_device, ctx.swap_chain, &image_count, raw_data(ctx.swap_chain_images))
+  ctx.swap_chain_image_format = surface_format.format
+  ctx.swap_chain_extent = extent
+
 }

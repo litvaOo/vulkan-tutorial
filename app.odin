@@ -16,6 +16,7 @@ init_vulkan :: proc (ctx: ^Context) {
   pick_physical_device(ctx)
   create_logical_device(ctx)
   vk.load_proc_addresses_device(ctx.logical_device)
+  create_swap_chain(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {
@@ -26,6 +27,7 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  vk.DestroySwapchainKHR(ctx.logical_device, ctx.swap_chain, nil)
   vk.DestroySurfaceKHR(ctx.instance, ctx.surface, nil)
   vk.DestroyDevice(ctx.logical_device, nil)
   vk.DestroyInstance(ctx.instance, nil)

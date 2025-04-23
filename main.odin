@@ -13,6 +13,10 @@ Context :: struct {
   logical_device: vk.Device,
   graphics_queue: vk.Queue,
   present_queue: vk.Queue,
+  swap_chain: vk.SwapchainKHR,
+  swap_chain_images: [dynamic]vk.Image,
+  swap_chain_image_format: vk.Format,
+  swap_chain_extent: vk.Extent2D,
 }
 
 main :: proc () {
