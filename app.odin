@@ -18,6 +18,7 @@ init_vulkan :: proc (ctx: ^Context) {
   vk.load_proc_addresses_device(ctx.logical_device)
   create_swap_chain(ctx)
   create_image_views(ctx)
+  create_graphics_pipeline(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {

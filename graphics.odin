@@ -226,5 +226,8 @@ create_swap_chain :: proc(ctx: ^Context) {
   vk.GetSwapchainImagesKHR(ctx.logical_device, ctx.swap_chain, &image_count, raw_data(ctx.swap_chain_images))
   ctx.swap_chain_image_format = surface_format.format
   ctx.swap_chain_extent = extent
+}
+
+create_graphics_pipeline :: proc(ctx: ^Context) {
 
 }
