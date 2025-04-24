@@ -29,6 +29,7 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
   for image_view in ctx.swap_chain_image_views {
     vk.DestroyImageView(ctx.logical_device, image_view, nil)
   }
