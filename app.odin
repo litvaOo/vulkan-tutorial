@@ -17,6 +17,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_logical_device(ctx)
   vk.load_proc_addresses_device(ctx.logical_device)
   create_swap_chain(ctx)
+  create_image_views(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {
@@ -27,6 +28,9 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  for image_view in ctx.swap_chain_image_views {
+    vk.DestroyImageView(ctx.logical_device, image_view, nil)
+  }
   vk.DestroySwapchainKHR(ctx.logical_device, ctx.swap_chain, nil)
   vk.DestroySurfaceKHR(ctx.instance, ctx.surface, nil)
   vk.DestroyDevice(ctx.logical_device, nil)

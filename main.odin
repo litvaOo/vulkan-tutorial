@@ -17,6 +17,7 @@ Context :: struct {
   swap_chain_images: [dynamic]vk.Image,
   swap_chain_image_format: vk.Format,
   swap_chain_extent: vk.Extent2D,
+  swap_chain_image_views: [dynamic]vk.ImageView,
 }
 
 main :: proc () {
