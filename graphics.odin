@@ -229,5 +229,5 @@ create_swap_chain :: proc(ctx: ^Context) {
 }
 
 create_graphics_pipeline :: proc(ctx: ^Context) {
-
+  
 }
