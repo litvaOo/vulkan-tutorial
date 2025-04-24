@@ -20,6 +20,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_image_views(ctx)
   create_render_pass(ctx)
   create_graphics_pipeline(ctx)
+  create_framebuffers(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {
@@ -27,9 +28,13 @@ main_loop :: proc(ctx: ^Context) {
     glfw.PollEvents()
   }
 
+  vk.DeviceWaitIdle(ctx.logical_device)
 }
 
 cleanup :: proc (ctx: ^Context) {
+  for framebuffer in ctx.swap_chain_framebuffers {
+    vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
+  }
   vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
   vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
   vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)

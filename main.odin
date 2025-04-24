@@ -21,6 +21,7 @@ Context :: struct {
   render_pass: vk.RenderPass,
   pipeline_layout : vk.PipelineLayout,
   graphics_pipeline: vk.Pipeline,
+  swap_chain_framebuffers: [dynamic]vk.Framebuffer,
 }
 
 main :: proc () {

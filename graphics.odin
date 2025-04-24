@@ -418,3 +418,25 @@ create_render_pass :: proc(ctx: ^Context) {
     panic("Failed to create render pass")
   }
 }
+
+create_framebuffers :: proc(ctx: ^Context) {
+  ctx.swap_chain_framebuffers = make([dynamic]vk.Framebuffer, len(ctx.swap_chain_image_views))
+  for i := 0; i < len(ctx.swap_chain_image_views); i += 1 {
+    attachments := []vk.ImageView{ctx.swap_chain_image_views[i]}
+
+    framebuffer_info: vk.FramebufferCreateInfo
+    {
+      framebuffer_info.sType = vk.StructureType.FRAMEBUFFER_CREATE_INFO
+      framebuffer_info.renderPass = ctx.render_pass
+      framebuffer_info.attachmentCount = 1
+      framebuffer_info.pAttachments = raw_data(attachments)
+      framebuffer_info.width = ctx.swap_chain_extent.width
+      framebuffer_info.height = ctx.swap_chain_extent.height
+      framebuffer_info.layers = 1
+    }
+
+    if vk.CreateFramebuffer(ctx.logical_device, &framebuffer_info, nil, &ctx.swap_chain_framebuffers[i]) != vk.Result.SUCCESS {
+      panic("Failed to create framebuffer")
+    }
+  }
+}
