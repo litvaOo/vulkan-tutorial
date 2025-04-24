@@ -18,6 +18,7 @@ init_vulkan :: proc (ctx: ^Context) {
   vk.load_proc_addresses_device(ctx.logical_device)
   create_swap_chain(ctx)
   create_image_views(ctx)
+  create_render_pass(ctx)
   create_graphics_pipeline(ctx)
 }
 
@@ -29,7 +30,9 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
   vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
+  vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)
   for image_view in ctx.swap_chain_image_views {
     vk.DestroyImageView(ctx.logical_device, image_view, nil)
   }

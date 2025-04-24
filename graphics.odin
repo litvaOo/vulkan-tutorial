@@ -350,9 +350,71 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
   }
 
   if vk.CreatePipelineLayout(ctx.logical_device, &pipeline_layout_info, nil, &ctx.pipeline_layout) != vk.Result.SUCCESS {
-    panic("Failed to create pipeline")
+    panic("Failed to create pipeline layout")
   }
 
+  pipeline_info: vk.GraphicsPipelineCreateInfo
+  {
+    pipeline_info.sType = vk.StructureType.GRAPHICS_PIPELINE_CREATE_INFO
+    pipeline_info.stageCount = 2
+    pipeline_info.pStages = raw_data(shader_stages)
+    pipeline_info.pVertexInputState = &vertex_input_info
+    pipeline_info.pInputAssemblyState = &input_assembly
+    pipeline_info.pViewportState = &viewport_state
+    pipeline_info.pRasterizationState = &rasterizer
+    pipeline_info.pMultisampleState = &multisampling
+    pipeline_info.pDepthStencilState = nil
+    pipeline_info.pColorBlendState = &color_blending
+    pipeline_info.pDynamicState = &dynamic_state
+    pipeline_info.layout = ctx.pipeline_layout
+    pipeline_info.renderPass = ctx.render_pass
+    pipeline_info.subpass = 0
+  }
+
+  if vk.CreateGraphicsPipelines(ctx.logical_device, 0, 1, &pipeline_info, nil, &ctx.graphics_pipeline) != vk.Result.SUCCESS {
+    panic("Failed to create graphic pipeline")
+  }
+  
   vk.DestroyShaderModule(ctx.logical_device, frag_shader_module, nil)
   vk.DestroyShaderModule(ctx.logical_device, vert_shader_module, nil)
+}
+
+create_render_pass :: proc(ctx: ^Context) {
+  color_attachment: vk.AttachmentDescription
+  {
+    color_attachment.format = ctx.swap_chain_image_format
+    color_attachment.samples = vk.SampleCountFlags{vk.SampleCountFlag._1}
+    color_attachment.loadOp = vk.AttachmentLoadOp.CLEAR
+    color_attachment.storeOp = vk.AttachmentStoreOp.STORE
+    color_attachment.stencilLoadOp = vk.AttachmentLoadOp.DONT_CARE
+    color_attachment.stencilStoreOp = vk.AttachmentStoreOp.DONT_CARE
+    color_attachment.initialLayout = vk.ImageLayout.UNDEFINED
+    color_attachment.finalLayout = vk.ImageLayout.PRESENT_SRC_KHR
+  }
+
+  color_attachment_ref: vk.AttachmentReference
+  {
+    color_attachment_ref.attachment = 0
+    color_attachment_ref.layout = vk.ImageLayout.COLOR_ATTACHMENT_OPTIMAL
+  }
+
+  subpass: vk.SubpassDescription
+  {
+    subpass.pipelineBindPoint = vk.PipelineBindPoint.GRAPHICS
+    subpass.colorAttachmentCount = 1
+    subpass.pColorAttachments = &color_attachment_ref
+  }
+
+  render_pass_info: vk.RenderPassCreateInfo
+  { 
+    render_pass_info.sType = vk.StructureType.RENDER_PASS_CREATE_INFO
+    render_pass_info.attachmentCount = 1
+    render_pass_info.pAttachments = &color_attachment
+    render_pass_info.subpassCount = 1
+    render_pass_info.pSubpasses = &subpass
+  }
+
+  if vk.CreateRenderPass(ctx.logical_device, &render_pass_info, nil, &ctx.render_pass) != vk.Result.SUCCESS {
+    panic("Failed to create render pass")
+  }
 }
