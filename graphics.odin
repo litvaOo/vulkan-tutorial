@@ -440,3 +440,16 @@ create_framebuffers :: proc(ctx: ^Context) {
     }
   }
 }
+
+create_command_pool :: proc(ctx: ^Context) {
+  queue_family_indices := find_queue_families(ctx, ctx.physical_device) or_else panic("Failed to get queue index")
+
+  pool_info: vk.CommandPoolCreateInfo
+  pool_info.sType = vk.StructureType.COMMAND_POOL_CREATE_INFO
+  pool_info.flags = vk.CommandPoolCreateFlags{vk.CommandPoolCreateFlag.RESET_COMMAND_BUFFER}
+  pool_info.queueFamilyIndex = queue_family_indices.graphics_family
+
+  if vk.CreateCommandPool(ctx.logical_device, &pool_info, nil, &ctx.command_pool) != vk.Result.SUCCESS {
+    panic("Failed to create command pool")
+  }
+}

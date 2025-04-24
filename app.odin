@@ -21,6 +21,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_render_pass(ctx)
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
+  create_command_pool(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {
@@ -32,6 +33,7 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  vk.DestroyCommandPool(ctx.logical_device, ctx.command_pool, nil)
   for framebuffer in ctx.swap_chain_framebuffers {
     vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
   }
