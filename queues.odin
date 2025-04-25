@@ -28,6 +28,8 @@ find_queue_families :: proc (ctx: ^Context, device: vk.PhysicalDevice) -> (Queue
     if present_support {
       indices.present_family = i  
     }
+
+    if graphics_index && present_support do break
   }
 
   return indices, graphics_index && present_support
