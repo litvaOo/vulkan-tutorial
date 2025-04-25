@@ -24,6 +24,9 @@ Context :: struct {
   swap_chain_framebuffers: [dynamic]vk.Framebuffer,
   command_pool: vk.CommandPool,
   command_buffer: vk.CommandBuffer,
+  image_available_semaphore: vk.Semaphore,
+  render_finished_semaphore: vk.Semaphore,
+  in_flight_fence: vk.Fence,
 }
 
 main :: proc () {

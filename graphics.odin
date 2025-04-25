@@ -405,6 +405,14 @@ create_render_pass :: proc(ctx: ^Context) {
     subpass.pColorAttachments = &color_attachment_ref
   }
 
+  dependency: vk.SubpassDependency
+  dependency.srcSubpass = vk.SUBPASS_EXTERNAL
+  dependency.dstSubpass = 0
+  dependency.srcStageMask = vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}
+  dependency.srcAccessMask = vk.AccessFlags{vk.AccessFlag.INDIRECT_COMMAND_READ}
+  dependency.dstStageMask = vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}
+  dependency.dstAccessMask = vk.AccessFlags{vk.AccessFlag.COLOR_ATTACHMENT_WRITE}
+
   render_pass_info: vk.RenderPassCreateInfo
   { 
     render_pass_info.sType = vk.StructureType.RENDER_PASS_CREATE_INFO
@@ -412,6 +420,8 @@ create_render_pass :: proc(ctx: ^Context) {
     render_pass_info.pAttachments = &color_attachment
     render_pass_info.subpassCount = 1
     render_pass_info.pSubpasses = &subpass
+    render_pass_info.dependencyCount = 1
+    render_pass_info.pDependencies = &dependency
   }
 
   if vk.CreateRenderPass(ctx.logical_device, &render_pass_info, nil, &ctx.render_pass) != vk.Result.SUCCESS {
@@ -518,4 +528,20 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
   if vk.EndCommandBuffer(ctx.command_buffer) != vk.Result.SUCCESS {
     panic("Failed to finish command buffer")
   }
+}
+
+create_sync_objects :: proc(ctx: ^Context) {
+  semaphore_info: vk.SemaphoreCreateInfo
+  semaphore_info.sType = vk.StructureType.SEMAPHORE_CREATE_INFO
+
+  fence_info: vk.FenceCreateInfo
+  fence_info.sType = vk.StructureType.FENCE_CREATE_INFO
+  fence_info.flags = vk.FenceCreateFlags{vk.FenceCreateFlag.SIGNALED}
+
+  if vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.image_available_semaphore) != vk.Result.SUCCESS ||
+    vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.render_finished_semaphore) != vk.Result.SUCCESS ||
+    vk.CreateFence(ctx.logical_device, &fence_info, nil, &ctx.in_flight_fence) != vk.Result.SUCCESS {
+      panic("Failed to create sync objects")
+    }
+
 }
