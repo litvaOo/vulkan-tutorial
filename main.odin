@@ -23,6 +23,7 @@ Context :: struct {
   graphics_pipeline: vk.Pipeline,
   swap_chain_framebuffers: [dynamic]vk.Framebuffer,
   command_pool: vk.CommandPool,
+  command_buffer: vk.CommandBuffer,
 }
 
 main :: proc () {

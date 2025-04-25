@@ -22,6 +22,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
   create_command_pool(ctx)
+  create_command_buffer(ctx)
 }
 
 main_loop :: proc(ctx: ^Context) {

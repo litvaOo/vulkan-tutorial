@@ -445,11 +445,77 @@ create_command_pool :: proc(ctx: ^Context) {
   queue_family_indices := find_queue_families(ctx, ctx.physical_device) or_else panic("Failed to get queue index")
 
   pool_info: vk.CommandPoolCreateInfo
-  pool_info.sType = vk.StructureType.COMMAND_POOL_CREATE_INFO
-  pool_info.flags = vk.CommandPoolCreateFlags{vk.CommandPoolCreateFlag.RESET_COMMAND_BUFFER}
-  pool_info.queueFamilyIndex = queue_family_indices.graphics_family
-
+  { 
+    pool_info.sType = vk.StructureType.COMMAND_POOL_CREATE_INFO
+    pool_info.flags = vk.CommandPoolCreateFlags{vk.CommandPoolCreateFlag.RESET_COMMAND_BUFFER}
+    pool_info.queueFamilyIndex = queue_family_indices.graphics_family
+  }
   if vk.CreateCommandPool(ctx.logical_device, &pool_info, nil, &ctx.command_pool) != vk.Result.SUCCESS {
     panic("Failed to create command pool")
+  }
+}
+
+create_command_buffer :: proc(ctx: ^Context) {
+  alloc_info: vk.CommandBufferAllocateInfo
+  { 
+    alloc_info.sType = vk.StructureType.COMMAND_BUFFER_ALLOCATE_INFO
+    alloc_info.commandPool = ctx.command_pool
+    alloc_info.level = vk.CommandBufferLevel.PRIMARY
+    alloc_info.commandBufferCount = 1
+  }
+  if vk.AllocateCommandBuffers(ctx.logical_device, &alloc_info, &ctx.command_buffer) != vk.Result.SUCCESS {
+    panic("Failed to allocate command buffer")
+  }
+}
+
+record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
+  begin_info: vk.CommandBufferBeginInfo
+  {
+    begin_info.sType = vk.StructureType.COMMAND_BUFFER_BEGIN_INFO
+  }
+
+  if vk.BeginCommandBuffer(ctx.command_buffer, &begin_info) != vk.Result.SUCCESS {
+    panic("Failed to create buffer")
+  }
+
+  clear_color := vk.ClearValue{color = {float32 = {0.0, 0.0, 0.0, 1.0}}}
+  render_pass_info: vk.RenderPassBeginInfo
+  { 
+    render_pass_info.sType = vk.StructureType.RENDER_PASS_BEGIN_INFO
+    render_pass_info.renderPass = ctx.render_pass
+    render_pass_info.framebuffer = ctx.swap_chain_framebuffers[image_index]
+    render_pass_info.renderArea.offset = {0, 0}
+    render_pass_info.renderArea.extent = ctx.swap_chain_extent
+    render_pass_info.clearValueCount = 1
+    render_pass_info.pClearValues = &clear_color
+  }
+
+  vk.CmdBeginRenderPass(ctx.command_buffer, &render_pass_info, vk.SubpassContents.INLINE)
+  vk.CmdBindPipeline(ctx.command_buffer, vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
+  
+  viewport: vk.Viewport
+  {
+    viewport.x = 0.0
+    viewport.y = 0.0
+    viewport.width = f32( ctx.swap_chain_extent.width )
+    viewport.height = f32( ctx.swap_chain_extent.height )
+    viewport.minDepth = 0.0
+    viewport.maxDepth = 1.0
+  }
+  vk.CmdSetViewport(ctx.command_buffer, 0, 1, &viewport)
+
+  scissor: vk.Rect2D
+  {
+    scissor.offset = {0, 0}
+    scissor.extent = ctx.swap_chain_extent
+  }
+  vk.CmdSetScissor(ctx.command_buffer, 0, 1, &scissor)
+
+  vk.CmdDraw(ctx.command_buffer, 3, 1, 0, 0)
+
+  vk.CmdEndRenderPass(ctx.command_buffer)
+
+  if vk.EndCommandBuffer(ctx.command_buffer) != vk.Result.SUCCESS {
+    panic("Failed to finish command buffer")
   }
 }
