@@ -465,15 +465,16 @@ create_command_pool :: proc(ctx: ^Context) {
   }
 }
 
-create_command_buffer :: proc(ctx: ^Context) {
+create_command_buffers :: proc(ctx: ^Context) {
   alloc_info: vk.CommandBufferAllocateInfo
+  ctx.command_buffers = make([dynamic]vk.CommandBuffer, MAX_FRAMES_IN_FLIGHT)
   { 
     alloc_info.sType = vk.StructureType.COMMAND_BUFFER_ALLOCATE_INFO
     alloc_info.commandPool = ctx.command_pool
     alloc_info.level = vk.CommandBufferLevel.PRIMARY
-    alloc_info.commandBufferCount = 1
+    alloc_info.commandBufferCount = u32(len(ctx.command_buffers))
   }
-  if vk.AllocateCommandBuffers(ctx.logical_device, &alloc_info, &ctx.command_buffer) != vk.Result.SUCCESS {
+  if vk.AllocateCommandBuffers(ctx.logical_device, &alloc_info, raw_data(ctx.command_buffers)) != vk.Result.SUCCESS {
     panic("Failed to allocate command buffer")
   }
 }
@@ -484,7 +485,7 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     begin_info.sType = vk.StructureType.COMMAND_BUFFER_BEGIN_INFO
   }
 
-  if vk.BeginCommandBuffer(ctx.command_buffer, &begin_info) != vk.Result.SUCCESS {
+  if vk.BeginCommandBuffer(ctx.command_buffers[ctx.current_frame], &begin_info) != vk.Result.SUCCESS {
     panic("Failed to create buffer")
   }
 
@@ -500,8 +501,8 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     render_pass_info.pClearValues = &clear_color
   }
 
-  vk.CmdBeginRenderPass(ctx.command_buffer, &render_pass_info, vk.SubpassContents.INLINE)
-  vk.CmdBindPipeline(ctx.command_buffer, vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
+  vk.CmdBeginRenderPass(ctx.command_buffers[ctx.current_frame], &render_pass_info, vk.SubpassContents.INLINE)
+  vk.CmdBindPipeline(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
   
   viewport: vk.Viewport
   {
@@ -512,25 +513,29 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     viewport.minDepth = 0.0
     viewport.maxDepth = 1.0
   }
-  vk.CmdSetViewport(ctx.command_buffer, 0, 1, &viewport)
+  vk.CmdSetViewport(ctx.command_buffers[ctx.current_frame], 0, 1, &viewport)
 
   scissor: vk.Rect2D
   {
     scissor.offset = {0, 0}
     scissor.extent = ctx.swap_chain_extent
   }
-  vk.CmdSetScissor(ctx.command_buffer, 0, 1, &scissor)
+  vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
 
-  vk.CmdDraw(ctx.command_buffer, 3, 1, 0, 0)
+  vk.CmdDraw(ctx.command_buffers[ctx.current_frame], 3, 1, 0, 0)
 
-  vk.CmdEndRenderPass(ctx.command_buffer)
+  vk.CmdEndRenderPass(ctx.command_buffers[ctx.current_frame])
 
-  if vk.EndCommandBuffer(ctx.command_buffer) != vk.Result.SUCCESS {
+  if vk.EndCommandBuffer(ctx.command_buffers[ctx.current_frame]) != vk.Result.SUCCESS {
     panic("Failed to finish command buffer")
   }
 }
 
 create_sync_objects :: proc(ctx: ^Context) {
+  ctx.image_available_semaphores = make([dynamic]vk.Semaphore, MAX_FRAMES_IN_FLIGHT)
+  ctx.render_finished_semaphores = make([dynamic]vk.Semaphore, MAX_FRAMES_IN_FLIGHT)
+  ctx.in_flight_fences = make([dynamic]vk.Fence, MAX_FRAMES_IN_FLIGHT)
+
   semaphore_info: vk.SemaphoreCreateInfo
   semaphore_info.sType = vk.StructureType.SEMAPHORE_CREATE_INFO
 
@@ -538,10 +543,11 @@ create_sync_objects :: proc(ctx: ^Context) {
   fence_info.sType = vk.StructureType.FENCE_CREATE_INFO
   fence_info.flags = vk.FenceCreateFlags{vk.FenceCreateFlag.SIGNALED}
 
-  if vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.image_available_semaphore) != vk.Result.SUCCESS ||
-    vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.render_finished_semaphore) != vk.Result.SUCCESS ||
-    vk.CreateFence(ctx.logical_device, &fence_info, nil, &ctx.in_flight_fence) != vk.Result.SUCCESS {
-      panic("Failed to create sync objects")
-    }
-
+  for i := u32(0); i < MAX_FRAMES_IN_FLIGHT; i += 1{ 
+    if vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.image_available_semaphores[i]) != vk.Result.SUCCESS ||
+      vk.CreateSemaphore(ctx.logical_device, &semaphore_info, nil, &ctx.render_finished_semaphores[i]) != vk.Result.SUCCESS ||
+      vk.CreateFence(ctx.logical_device, &fence_info, nil, &ctx.in_flight_fences[i]) != vk.Result.SUCCESS {
+        panic("Failed to create sync objects")
+      }
+  }
 }

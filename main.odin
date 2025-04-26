@@ -4,6 +4,8 @@ import "core:fmt"
 import glfw "vendor:glfw"
 import vk "vendor:vulkan"
 
+MAX_FRAMES_IN_FLIGHT : u32 = 2
+
 Context :: struct {
   window: glfw.WindowHandle,
   instance : vk.Instance,
@@ -23,14 +25,16 @@ Context :: struct {
   graphics_pipeline: vk.Pipeline,
   swap_chain_framebuffers: [dynamic]vk.Framebuffer,
   command_pool: vk.CommandPool,
-  command_buffer: vk.CommandBuffer,
-  image_available_semaphore: vk.Semaphore,
-  render_finished_semaphore: vk.Semaphore,
-  in_flight_fence: vk.Fence,
+  command_buffers: [dynamic]vk.CommandBuffer,
+  image_available_semaphores: [dynamic]vk.Semaphore,
+  render_finished_semaphores: [dynamic]vk.Semaphore,
+  in_flight_fences: [dynamic]vk.Fence,
+  current_frame: u32,
 }
 
 main :: proc () {
   ctx : Context
+  ctx.current_frame = 0
   ctx.enable_validation_layers = false
   when ODIN_DEBUG {
     ctx.enable_validation_layers = true

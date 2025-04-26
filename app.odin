@@ -23,7 +23,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
   create_command_pool(ctx)
-  create_command_buffer(ctx)
+  create_command_buffers(ctx)
   create_sync_objects(ctx)
 }
 
@@ -37,18 +37,18 @@ main_loop :: proc(ctx: ^Context) {
 }
 
 draw_frame :: proc(ctx: ^Context) {
-  vk.WaitForFences(ctx.logical_device, 1, &ctx.in_flight_fence, true, c.UINT64_MAX)
-  vk.ResetFences(ctx.logical_device, 1, &ctx.in_flight_fence)
+  vk.WaitForFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame], true, c.UINT64_MAX)
+  vk.ResetFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame])
 
   image_index: u32
-  vk.AcquireNextImageKHR(ctx.logical_device, ctx.swap_chain, c.UINT64_MAX, ctx.image_available_semaphore, 0, &image_index)
+  vk.AcquireNextImageKHR(ctx.logical_device, ctx.swap_chain, c.UINT64_MAX, ctx.image_available_semaphores[ctx.current_frame], 0, &image_index)
 
-  vk.ResetCommandBuffer(ctx.command_buffer, vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
+  vk.ResetCommandBuffer(ctx.command_buffers[ctx.current_frame], vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
   record_command_buffer(ctx, image_index)
 
-  wait_semaphores := []vk.Semaphore{ctx.image_available_semaphore}
+  wait_semaphores := []vk.Semaphore{ctx.image_available_semaphores[ctx.current_frame]}
   wait_stages := []vk.PipelineStageFlags{vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}}
-  signal_semaphores := []vk.Semaphore{ctx.render_finished_semaphore}
+  signal_semaphores := []vk.Semaphore{ctx.render_finished_semaphores[ctx.current_frame]}
 
   submit_info: vk.SubmitInfo
   {
@@ -57,12 +57,12 @@ draw_frame :: proc(ctx: ^Context) {
     submit_info.pWaitSemaphores = raw_data( wait_semaphores )
     submit_info.pWaitDstStageMask = raw_data( wait_stages )
     submit_info.commandBufferCount = 1
-    submit_info.pCommandBuffers = &ctx.command_buffer
+    submit_info.pCommandBuffers = &ctx.command_buffers[ctx.current_frame]
     submit_info.signalSemaphoreCount = 1
     submit_info.pSignalSemaphores = raw_data( signal_semaphores )
   }
 
-  if vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fence) != vk.Result.SUCCESS {
+  if vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fences[ctx.current_frame]) != vk.Result.SUCCESS {
     panic("Failed to submit queue")
   }
 
@@ -81,12 +81,17 @@ draw_frame :: proc(ctx: ^Context) {
   if vk.QueuePresentKHR(ctx.present_queue, &present_info) != vk.Result.SUCCESS {
     panic("Failed to present")
   }
+
+  ctx.current_frame = (ctx.current_frame + 1) % MAX_FRAMES_IN_FLIGHT
 }
 
 cleanup :: proc (ctx: ^Context) {
-  vk.DestroySemaphore(ctx.logical_device, ctx.image_available_semaphore, nil)
-  vk.DestroySemaphore(ctx.logical_device, ctx.render_finished_semaphore, nil)
-  vk.DestroyFence(ctx.logical_device, ctx.in_flight_fence, nil)
+
+  for i := u32(0); i < MAX_FRAMES_IN_FLIGHT; i += 1 {
+    vk.DestroySemaphore(ctx.logical_device, ctx.image_available_semaphores[i], nil)
+    vk.DestroySemaphore(ctx.logical_device, ctx.render_finished_semaphores[i], nil)
+    vk.DestroyFence(ctx.logical_device, ctx.in_flight_fences[i], nil)
+  }
   vk.DestroyCommandPool(ctx.logical_device, ctx.command_pool, nil)
   for framebuffer in ctx.swap_chain_framebuffers {
     vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
