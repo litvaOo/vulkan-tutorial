@@ -38,10 +38,18 @@ main_loop :: proc(ctx: ^Context) {
 
 draw_frame :: proc(ctx: ^Context) {
   vk.WaitForFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame], true, c.UINT64_MAX)
-  vk.ResetFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame])
 
   image_index: u32
-  vk.AcquireNextImageKHR(ctx.logical_device, ctx.swap_chain, c.UINT64_MAX, ctx.image_available_semaphores[ctx.current_frame], 0, &image_index)
+  res := vk.AcquireNextImageKHR(ctx.logical_device, ctx.swap_chain, c.UINT64_MAX, ctx.image_available_semaphores[ctx.current_frame], 0, &image_index)
+  if res == vk.Result.ERROR_OUT_OF_DATE_KHR || res == vk.Result.SUBOPTIMAL_KHR || ctx.framebuffer_resized {
+    ctx.framebuffer_resized = false
+    recreate_swap_chain(ctx)
+    return
+  } else if res != vk.Result.SUCCESS {
+    panic("Failed to acquire next image")
+  }
+
+  vk.ResetFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame])
 
   vk.ResetCommandBuffer(ctx.command_buffers[ctx.current_frame], vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
   record_command_buffer(ctx, image_index)
@@ -86,25 +94,21 @@ draw_frame :: proc(ctx: ^Context) {
 }
 
 cleanup :: proc (ctx: ^Context) {
+  cleanup_swap_chain(ctx)
+
+  vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
+  vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
+  vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)
 
   for i := u32(0); i < MAX_FRAMES_IN_FLIGHT; i += 1 {
     vk.DestroySemaphore(ctx.logical_device, ctx.image_available_semaphores[i], nil)
     vk.DestroySemaphore(ctx.logical_device, ctx.render_finished_semaphores[i], nil)
     vk.DestroyFence(ctx.logical_device, ctx.in_flight_fences[i], nil)
   }
+
   vk.DestroyCommandPool(ctx.logical_device, ctx.command_pool, nil)
-  for framebuffer in ctx.swap_chain_framebuffers {
-    vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
-  }
-  vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
-  vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
-  vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)
-  for image_view in ctx.swap_chain_image_views {
-    vk.DestroyImageView(ctx.logical_device, image_view, nil)
-  }
-  vk.DestroySwapchainKHR(ctx.logical_device, ctx.swap_chain, nil)
-  vk.DestroySurfaceKHR(ctx.instance, ctx.surface, nil)
   vk.DestroyDevice(ctx.logical_device, nil)
+  vk.DestroySurfaceKHR(ctx.instance, ctx.surface, nil)
   vk.DestroyInstance(ctx.instance, nil)
   glfw.DestroyWindow(ctx.window)
   glfw.Terminate()

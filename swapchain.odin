@@ -3,6 +3,7 @@ package main
 import vk "vendor:vulkan"
 import "core:math/bits"
 import "vendor:glfw"
+import "core:fmt"
 
 SwapChainSupportDetails :: struct {
   capabilities: vk.SurfaceCapabilitiesKHR,
@@ -63,6 +64,63 @@ choose_swap_extent :: proc(ctx: ^Context, capabilities: ^vk.SurfaceCapabilitiesK
   return actual_extent
 }
 
+create_swap_chain :: proc(ctx: ^Context) {
+  swap_chain_support := query_swap_chain_support(ctx, ctx.physical_device)
+
+  surface_format := choose_swap_surface_format(ctx, swap_chain_support.formats)
+  present_mode := choose_swap_present_mode(ctx, swap_chain_support.present_modes)
+  extent := choose_swap_extent(ctx, &swap_chain_support.capabilities)
+  
+  image_count := swap_chain_support.capabilities.minImageCount + 1
+
+  if swap_chain_support.capabilities.maxImageCount > 0 &&
+    image_count > swap_chain_support.capabilities.maxImageCount {
+      image_count = swap_chain_support.capabilities.maxImageCount
+    }
+
+  swapchain_create_info : vk.SwapchainCreateInfoKHR
+  { 
+    swapchain_create_info.sType = vk.StructureType.SWAPCHAIN_CREATE_INFO_KHR
+    swapchain_create_info.surface = ctx.surface
+    swapchain_create_info.minImageCount = image_count
+    swapchain_create_info.imageFormat = surface_format.format
+    swapchain_create_info.imageColorSpace = surface_format.colorSpace
+    swapchain_create_info.imageExtent = extent
+    swapchain_create_info.imageArrayLayers = 1
+    swapchain_create_info.imageUsage = vk.ImageUsageFlags{vk.ImageUsageFlag.COLOR_ATTACHMENT}
+
+    {
+      indices := find_queue_families(ctx, ctx.physical_device) or_else panic("No queue families")
+      if indices.graphics_family != indices.present_family {
+        swapchain_create_info.imageSharingMode = vk.SharingMode.CONCURRENT
+        swapchain_create_info.queueFamilyIndexCount = 2
+        swapchain_create_info.pQueueFamilyIndices = raw_data([]u32{indices.graphics_family, indices.present_family})
+      } else {
+        swapchain_create_info.imageSharingMode = vk.SharingMode.EXCLUSIVE
+        swapchain_create_info.queueFamilyIndexCount = 0
+        swapchain_create_info.pQueueFamilyIndices = nil
+      }
+    }
+
+    swapchain_create_info.preTransform = swap_chain_support.capabilities.currentTransform
+    swapchain_create_info.compositeAlpha = vk.CompositeAlphaFlagsKHR{vk.CompositeAlphaFlagKHR.OPAQUE}
+    swapchain_create_info.presentMode = present_mode
+    swapchain_create_info.clipped = true
+    swapchain_create_info.oldSwapchain = 0
+  }
+
+  if res := vk.CreateSwapchainKHR(ctx.logical_device, &swapchain_create_info, nil, &ctx.swap_chain); res != vk.Result.SUCCESS {
+    fmt.println(res)
+    panic("Failed to create swapchain")
+  }
+
+  vk.GetSwapchainImagesKHR(ctx.logical_device, ctx.swap_chain, &image_count, nil)
+  ctx.swap_chain_images = make([dynamic]vk.Image, image_count)
+  vk.GetSwapchainImagesKHR(ctx.logical_device, ctx.swap_chain, &image_count, raw_data(ctx.swap_chain_images))
+  ctx.swap_chain_image_format = surface_format.format
+  ctx.swap_chain_extent = extent
+}
+
 create_image_views :: proc(ctx: ^Context) {
   ctx.swap_chain_image_views = make([dynamic]vk.ImageView, len(ctx.swap_chain_images))
   for i := 0; i < len(ctx.swap_chain_images); i+=1 {
@@ -84,4 +142,32 @@ create_image_views :: proc(ctx: ^Context) {
       panic("Failed to create image views")
     }
   }
+}
+
+recreate_swap_chain :: proc(ctx: ^Context) {
+  width, height: i32 = glfw.GetFramebufferSize(ctx.window)
+
+  for width == 0 || height == 0 {
+    width, height = glfw.GetFramebufferSize(ctx.window)
+    glfw.WaitEvents()
+  }
+
+  vk.DeviceWaitIdle(ctx.logical_device)
+
+  cleanup_swap_chain(ctx)
+
+  create_swap_chain(ctx)
+  create_image_views(ctx)
+  create_framebuffers(ctx)
+}
+
+cleanup_swap_chain :: proc(ctx: ^Context) {
+  for framebuffer in ctx.swap_chain_framebuffers {
+    vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
+  }
+  for image_view in ctx.swap_chain_image_views {
+    vk.DestroyImageView(ctx.logical_device, image_view, nil)
+  }
+  vk.DestroySwapchainKHR(ctx.logical_device, ctx.swap_chain, nil)
+
 }

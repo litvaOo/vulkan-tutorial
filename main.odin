@@ -30,12 +30,14 @@ Context :: struct {
   render_finished_semaphores: [dynamic]vk.Semaphore,
   in_flight_fences: [dynamic]vk.Fence,
   current_frame: u32,
+  framebuffer_resized: bool,
 }
 
 main :: proc () {
   ctx : Context
   ctx.current_frame = 0
   ctx.enable_validation_layers = false
+  ctx.framebuffer_resized = false
   when ODIN_DEBUG {
     ctx.enable_validation_layers = true
   }
