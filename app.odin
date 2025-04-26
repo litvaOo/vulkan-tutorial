@@ -23,6 +23,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
   create_command_pool(ctx)
+  create_vertex_buffer(ctx)
   create_command_buffers(ctx)
   create_sync_objects(ctx)
 }
@@ -99,6 +100,9 @@ cleanup :: proc (ctx: ^Context) {
   vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
   vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
   vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)
+
+  vk.DestroyBuffer(ctx.logical_device, ctx.vertex_buffer, nil)
+  vk.FreeMemory(ctx.logical_device, ctx.vertex_buffer_memory, nil)
 
   for i := u32(0); i < MAX_FRAMES_IN_FLIGHT; i += 1 {
     vk.DestroySemaphore(ctx.logical_device, ctx.image_available_semaphores[i], nil)

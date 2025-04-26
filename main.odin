@@ -31,6 +31,8 @@ Context :: struct {
   in_flight_fences: [dynamic]vk.Fence,
   current_frame: u32,
   framebuffer_resized: bool,
+  vertex_buffer: vk.Buffer,
+  vertex_buffer_memory: vk.DeviceMemory,
 }
 
 main :: proc () {
@@ -43,17 +45,6 @@ main :: proc () {
   }
   init_window(&ctx)
   init_vulkan(&ctx)
-
-  extension_count : u32
-  vk.EnumerateInstanceExtensionProperties(nil, &extension_count, nil)
-  extensions := make([^]vk.ExtensionProperties, extension_count)
-  vk.EnumerateInstanceExtensionProperties(nil, &extension_count, extensions)
-
-  for i := u32(0); i < extension_count; i += 1 {
-    fmt.printf("%s\n", extensions[i].extensionName)
-  }
-
-  fmt.printf("Got %d extensions\n", extension_count)
 
   main_loop(&ctx)
   cleanup(&ctx)

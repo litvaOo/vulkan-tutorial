@@ -196,13 +196,16 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
 
   shader_stages := []vk.PipelineShaderStageCreateInfo{vert_shader_stage_info, frag_shader_stage_info}
 
+  binding_description := get_binding_description(ctx)
+  attribute_descriptions := get_attribute_descriptions(ctx)
+
   vertex_input_info : vk.PipelineVertexInputStateCreateInfo
   {
     vertex_input_info.sType = vk.StructureType.PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-    vertex_input_info.vertexBindingDescriptionCount = 0
-    vertex_input_info.pVertexBindingDescriptions = nil
-    vertex_input_info.vertexAttributeDescriptionCount = 0
-    vertex_input_info.pVertexAttributeDescriptions = nil
+    vertex_input_info.vertexBindingDescriptionCount = 1
+    vertex_input_info.vertexAttributeDescriptionCount = u32(len(attribute_descriptions))
+    vertex_input_info.pVertexBindingDescriptions = &binding_description
+    vertex_input_info.pVertexAttributeDescriptions = raw_data(attribute_descriptions)
   }
 
   input_assembly : vk.PipelineInputAssemblyStateCreateInfo
@@ -447,7 +450,10 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
 
   vk.CmdBeginRenderPass(ctx.command_buffers[ctx.current_frame], &render_pass_info, vk.SubpassContents.INLINE)
   vk.CmdBindPipeline(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
-  
+  vertex_buffers := []vk.Buffer{ctx.vertex_buffer}
+  offsets := []vk.DeviceSize{0}
+  vk.CmdBindVertexBuffers(ctx.command_buffers[ctx.current_frame], 0, 1, raw_data(vertex_buffers), raw_data(offsets))
+
   viewport: vk.Viewport
   {
     viewport.x = 0.0
@@ -465,6 +471,7 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     scissor.extent = ctx.swap_chain_extent
   }
   vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
+
 
   vk.CmdDraw(ctx.command_buffers[ctx.current_frame], 3, 1, 0, 0)
 
