@@ -50,43 +50,50 @@ create_vertex_buffer :: proc(ctx: ^Context) {
     {{-0.5, 0.5}, {0.0, 0.0, 1.0}}
   }
 
+  buffer_size := vk.DeviceSize(size_of(vertices[0]) * len(vertices))
+  create_bufer(ctx,
+        buffer_size, {vk.BufferUsageFlag.VERTEX_BUFFER},
+        {vk.MemoryPropertyFlag.HOST_VISIBLE, vk.MemoryPropertyFlag.HOST_COHERENT},
+        &ctx.vertex_buffer, &ctx.vertex_buffer_memory)
+
+  data: rawptr
+  if vk.MapMemory(ctx.logical_device, ctx.vertex_buffer_memory, 0, buffer_size, vk.MemoryMapFlags{vk.MemoryMapFlag.PLACED_EXT}, &data) != vk.Result.SUCCESS {
+    panic("Failed to map memory")
+  }
+  mem.copy(data, raw_data(vertices), int(buffer_size))
+  vk.UnmapMemory(ctx.logical_device, ctx.vertex_buffer_memory)
+}
+
+create_bufer :: proc(ctx: ^Context,
+      size: vk.DeviceSize, usage: vk.BufferUsageFlags, properties: vk.MemoryPropertyFlags,
+      buffer: ^vk.Buffer, buffer_memory: ^vk.DeviceMemory) {
   buffer_info: vk.BufferCreateInfo
   {
     buffer_info.sType = vk.StructureType.BUFFER_CREATE_INFO
-    buffer_info.size = vk.DeviceSize(size_of(vertices[0]) * len(vertices))
-    buffer_info.usage = vk.BufferUsageFlags{vk.BufferUsageFlag.VERTEX_BUFFER}
+    buffer_info.size = size
+    buffer_info.usage = usage
     buffer_info.sharingMode = vk.SharingMode.EXCLUSIVE
   }
 
-  if vk.CreateBuffer(ctx.logical_device, &buffer_info, nil, &ctx.vertex_buffer) != vk.Result.SUCCESS {
-    panic("Failed to create vertex buffer")
+  if vk.CreateBuffer(ctx.logical_device, &buffer_info, nil, buffer) != vk.Result.SUCCESS {
+    panic("Failed to create new buffer")
   }
 
   mem_requirements: vk.MemoryRequirements
-  vk.GetBufferMemoryRequirements(ctx.logical_device, ctx.vertex_buffer, &mem_requirements)
+  vk.GetBufferMemoryRequirements(ctx.logical_device, buffer^, &mem_requirements)
 
-  allocate_info : vk.MemoryAllocateInfo
+  allocate_info: vk.MemoryAllocateInfo
   {
     allocate_info.sType = vk.StructureType.MEMORY_ALLOCATE_INFO
     allocate_info.allocationSize = mem_requirements.size
-    allocate_info.memoryTypeIndex = find_memory_type(
-      ctx, mem_requirements.memoryTypeBits,
-      vk.MemoryPropertyFlags{vk.MemoryPropertyFlag.HOST_VISIBLE, vk.MemoryPropertyFlag.HOST_COHERENT})
+    allocate_info.memoryTypeIndex = find_memory_type(ctx, mem_requirements.memoryTypeBits, properties)
   }
 
-  if vk.AllocateMemory(ctx.logical_device, &allocate_info, nil, &ctx.vertex_buffer_memory) != vk.Result.SUCCESS {
-    panic("Failed to allocate vertex memory")
-  }
-  if vk.BindBufferMemory(ctx.logical_device, ctx.vertex_buffer, ctx.vertex_buffer_memory, 0) != vk.Result.SUCCESS {
-    panic("failed to bin memory")
+  if vk.AllocateMemory(ctx.logical_device, &allocate_info, nil, buffer_memory) != vk.Result.SUCCESS {
+    panic("Failed to allocate memory")
   }
 
-  data: rawptr
-  if vk.MapMemory(ctx.logical_device, ctx.vertex_buffer_memory, 0, buffer_info.size, vk.MemoryMapFlags{vk.MemoryMapFlag.PLACED_EXT}, &data) != vk.Result.SUCCESS {
-    panic("Failed to map memory")
-  }
-  mem.copy(data, raw_data(vertices), int(buffer_info.size))
-  vk.UnmapMemory(ctx.logical_device, ctx.vertex_buffer_memory)
+  vk.BindBufferMemory(ctx.logical_device, buffer^, buffer_memory^, 0)
 }
 
 find_memory_type :: proc(ctx: ^Context, type_filter: u32, properties: vk.MemoryPropertyFlags) -> u32 {
