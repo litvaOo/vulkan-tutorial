@@ -68,7 +68,7 @@ create_vertex_buffer :: proc(ctx: ^Context) {
 
   create_buffer(ctx, buffer_size,
     {vk.BufferUsageFlag.TRANSFER_DST, vk.BufferUsageFlag.VERTEX_BUFFER}, {vk.MemoryPropertyFlag.DEVICE_LOCAL},
-    &staging_buffer, &staging_buffer_memory)
+    &ctx.vertex_buffer, &ctx.vertex_buffer_memory)
 
   copy_buffer(ctx, staging_buffer, ctx.vertex_buffer, buffer_size)
   vk.DestroyBuffer(ctx.logical_device, staging_buffer, nil)
