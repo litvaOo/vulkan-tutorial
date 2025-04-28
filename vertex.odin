@@ -44,12 +44,6 @@ get_attribute_descriptions :: proc(ctx: ^Context) -> []vk.VertexInputAttributeDe
 }
 
 create_vertex_buffer :: proc(ctx: ^Context) {
-  vertices := []Vertex{
-    {{0.0, -0.5}, {1.0, 0.0, 0.0}},
-    {{0.5, 0.5}, {0.0, 1.0, 0.0}},
-    {{-0.5, 0.5}, {0.0, 0.0, 1.0}}
-  }
-
   buffer_size := vk.DeviceSize(size_of(vertices[0]) * len(vertices))
 
   staging_buffer: vk.Buffer
@@ -71,6 +65,32 @@ create_vertex_buffer :: proc(ctx: ^Context) {
     &ctx.vertex_buffer, &ctx.vertex_buffer_memory)
 
   copy_buffer(ctx, staging_buffer, ctx.vertex_buffer, buffer_size)
+  vk.DestroyBuffer(ctx.logical_device, staging_buffer, nil)
+  vk.FreeMemory(ctx.logical_device, staging_buffer_memory, nil)
+}
+
+create_index_buffer :: proc(ctx: ^Context) {
+  buffer_size := vk.DeviceSize(size_of(indices[0])*len(indices))
+
+  staging_buffer: vk.Buffer
+  staging_buffer_memory: vk.DeviceMemory
+  create_buffer(ctx,
+        buffer_size, {vk.BufferUsageFlag.TRANSFER_SRC},
+        {vk.MemoryPropertyFlag.HOST_VISIBLE, vk.MemoryPropertyFlag.HOST_COHERENT},
+        &staging_buffer, &staging_buffer_memory)
+
+  data: rawptr
+  if vk.MapMemory(ctx.logical_device, staging_buffer_memory, 0, buffer_size, vk.MemoryMapFlags{vk.MemoryMapFlag.PLACED_EXT}, &data) != vk.Result.SUCCESS {
+    panic("Failed to map memory")
+  }
+  mem.copy(data, raw_data(indices), int(buffer_size))
+  vk.UnmapMemory(ctx.logical_device, staging_buffer_memory)
+
+  create_buffer(ctx, buffer_size,
+    {vk.BufferUsageFlag.TRANSFER_DST, vk.BufferUsageFlag.INDEX_BUFFER}, {vk.MemoryPropertyFlag.DEVICE_LOCAL},
+    &ctx.index_buffer, &ctx.index_buffer_memory)
+
+  copy_buffer(ctx, staging_buffer, ctx.index_buffer, buffer_size)
   vk.DestroyBuffer(ctx.logical_device, staging_buffer, nil)
   vk.FreeMemory(ctx.logical_device, staging_buffer_memory, nil)
 }

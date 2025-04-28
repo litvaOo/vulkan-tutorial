@@ -24,6 +24,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_framebuffers(ctx)
   create_command_pool(ctx)
   create_vertex_buffer(ctx)
+  create_index_buffer(ctx)
   create_command_buffers(ctx)
   create_sync_objects(ctx)
 }

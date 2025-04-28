@@ -33,7 +33,18 @@ Context :: struct {
   framebuffer_resized: bool,
   vertex_buffer: vk.Buffer,
   vertex_buffer_memory: vk.DeviceMemory,
+  index_buffer: vk.Buffer,
+  index_buffer_memory: vk.DeviceMemory,
 }
+
+vertices := []Vertex{
+  {{-0.5, -0.5}, {1.0, 0.0, 0.0}},
+  {{0.5, -0.5}, {0.0, 1.0, 0.0}},
+  {{0.5, 0.5}, {0.0, 0.0, 1.0}},
+  {{-0.5, 0.5}, {1.0, 1.0, 1.0}},
+}
+
+indices := []u32{0, 1, 2, 2, 3, 0}
 
 main :: proc () {
   ctx : Context

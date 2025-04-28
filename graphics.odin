@@ -453,6 +453,7 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
   vertex_buffers := []vk.Buffer{ctx.vertex_buffer}
   offsets := []vk.DeviceSize{0}
   vk.CmdBindVertexBuffers(ctx.command_buffers[ctx.current_frame], 0, 1, raw_data(vertex_buffers), raw_data(offsets))
+  vk.CmdBindIndexBuffer(ctx.command_buffers[ctx.current_frame], ctx.index_buffer, 0, vk.IndexType.UINT32)
 
   viewport: vk.Viewport
   {
@@ -473,7 +474,7 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
   vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
 
 
-  vk.CmdDraw(ctx.command_buffers[ctx.current_frame], 3, 1, 0, 0)
+  vk.CmdDrawIndexed(ctx.command_buffers[ctx.current_frame], u32(len(indices)), 1, 0, 0, 0)
 
   vk.CmdEndRenderPass(ctx.command_buffers[ctx.current_frame])
 
