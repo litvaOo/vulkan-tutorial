@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import "core:strings"
 import "base:runtime"
 import "core:slice"
@@ -36,7 +35,6 @@ create_vk_instance :: proc(ctx: ^Context) {
 
   vk_result := vk.CreateInstance(&create_info, nil, &ctx.instance)
   if vk_result != vk.Result.SUCCESS {
-    fmt.println(vk_result)
     panic("Failed creation")
   }
 }
@@ -49,11 +47,6 @@ check_validation_layer_support :: proc (ctx: ^Context) -> bool {
 
     available_layers := make([^]vk.LayerProperties, layer_count)
     vk.EnumerateInstanceLayerProperties(&layer_count, available_layers)
-
-    for i := u32(0); i < layer_count; i += 1 {
-      fmt.printf("%s\n", available_layers[i].layerName)
-    }
-    fmt.println("Finished layer properties")
 
     for layer in validation_layers {
       layer_found := false
@@ -230,7 +223,7 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
     rasterizer.polygonMode = vk.PolygonMode.FILL
     rasterizer.lineWidth = 1.0
     rasterizer.cullMode = vk.CullModeFlags{vk.CullModeFlag.BACK}
-    rasterizer.frontFace = vk.FrontFace.CLOCKWISE
+    rasterizer.frontFace = vk.FrontFace.COUNTER_CLOCKWISE
     rasterizer.depthBiasEnable = false
     rasterizer.depthBiasConstantFactor = 0.0
     rasterizer.depthBiasClamp = 0.0
@@ -290,8 +283,8 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
   pipeline_layout_info : vk.PipelineLayoutCreateInfo
   {
     pipeline_layout_info.sType = vk.StructureType.PIPELINE_LAYOUT_CREATE_INFO
-    pipeline_layout_info.setLayoutCount = 0
-    pipeline_layout_info.pSetLayouts = nil
+    pipeline_layout_info.setLayoutCount = 1
+    pipeline_layout_info.pSetLayouts = &ctx.descriptor_set_layout
     pipeline_layout_info.pushConstantRangeCount = 0
     pipeline_layout_info.pPushConstantRanges = nil
   }
@@ -448,12 +441,16 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     render_pass_info.pClearValues = &clear_color
   }
 
-  vk.CmdBeginRenderPass(ctx.command_buffers[ctx.current_frame], &render_pass_info, vk.SubpassContents.INLINE)
-  vk.CmdBindPipeline(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
   vertex_buffers := []vk.Buffer{ctx.vertex_buffer}
   offsets := []vk.DeviceSize{0}
-  vk.CmdBindVertexBuffers(ctx.command_buffers[ctx.current_frame], 0, 1, raw_data(vertex_buffers), raw_data(offsets))
-  vk.CmdBindIndexBuffer(ctx.command_buffers[ctx.current_frame], ctx.index_buffer, 0, vk.IndexType.UINT32)
+
+  vk.CmdBeginRenderPass(ctx.command_buffers[ctx.current_frame], &render_pass_info, vk.SubpassContents.INLINE)
+  bindings: {
+    vk.CmdBindPipeline(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
+    vk.CmdBindVertexBuffers(ctx.command_buffers[ctx.current_frame], 0, 1, raw_data(vertex_buffers), raw_data(offsets))
+    vk.CmdBindIndexBuffer(ctx.command_buffers[ctx.current_frame], ctx.index_buffer, 0, vk.IndexType.UINT32)
+    vk.CmdBindDescriptorSets(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.pipeline_layout, 0, 1, &ctx.descriptor_sets[ctx.current_frame], 0, nil)
+  }
 
   viewport: vk.Viewport
   {
@@ -472,7 +469,6 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     scissor.extent = ctx.swap_chain_extent
   }
   vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
-
 
   vk.CmdDrawIndexed(ctx.command_buffers[ctx.current_frame], u32(len(indices)), 1, 0, 0, 0)
 

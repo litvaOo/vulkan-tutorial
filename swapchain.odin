@@ -3,7 +3,6 @@ package main
 import vk "vendor:vulkan"
 import "core:math/bits"
 import "vendor:glfw"
-import "core:fmt"
 
 SwapChainSupportDetails :: struct {
   capabilities: vk.SurfaceCapabilitiesKHR,
@@ -110,7 +109,6 @@ create_swap_chain :: proc(ctx: ^Context) {
   }
 
   if res := vk.CreateSwapchainKHR(ctx.logical_device, &swapchain_create_info, nil, &ctx.swap_chain); res != vk.Result.SUCCESS {
-    fmt.println(res)
     panic("Failed to create swapchain")
   }
 

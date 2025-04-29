@@ -2,7 +2,6 @@ package main
 
 import vk "vendor:vulkan"
 import "core:mem"
-import "core:fmt"
 
 Vec2 :: [2]f32
 Vec3 :: [3]f32

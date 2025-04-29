@@ -3,6 +3,7 @@ package main
 import glfw "vendor:glfw"
 import vk "vendor:vulkan"
 import "core:c"
+import "core:time"
 
 init_vulkan :: proc (ctx: ^Context) {
   // because odin does not automatically link correct vulkan addresses. sigh
@@ -20,11 +21,15 @@ init_vulkan :: proc (ctx: ^Context) {
   create_swap_chain(ctx)
   create_image_views(ctx)
   create_render_pass(ctx)
+  create_descriptor_set_layout(ctx)
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
   create_command_pool(ctx)
   create_vertex_buffer(ctx)
   create_index_buffer(ctx)
+  create_uniform_buffer(ctx)
+  create_descriptor_pool(ctx)
+  create_descriptor_sets(ctx)
   create_command_buffers(ctx)
   create_sync_objects(ctx)
 }
@@ -55,6 +60,8 @@ draw_frame :: proc(ctx: ^Context) {
 
   vk.ResetCommandBuffer(ctx.command_buffers[ctx.current_frame], vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
   record_command_buffer(ctx, image_index)
+
+  update_uniform_buffer(ctx)
 
   wait_semaphores := []vk.Semaphore{ctx.image_available_semaphores[ctx.current_frame]}
   wait_stages := []vk.PipelineStageFlags{vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}}
@@ -98,6 +105,12 @@ draw_frame :: proc(ctx: ^Context) {
 cleanup :: proc (ctx: ^Context) {
   cleanup_swap_chain(ctx)
 
+  for i in 0..<MAX_FRAMES_IN_FLIGHT {
+    vk.DestroyBuffer(ctx.logical_device, ctx.uniform_buffers[i], nil)
+    vk.FreeMemory(ctx.logical_device, ctx.uniform_buffers_memory[i], nil)
+  }
+
+  vk.DestroyDescriptorSetLayout(ctx.logical_device, ctx.descriptor_set_layout, nil)
   vk.DestroyPipeline(ctx.logical_device, ctx.graphics_pipeline, nil)
   vk.DestroyPipelineLayout(ctx.logical_device, ctx.pipeline_layout, nil)
   vk.DestroyRenderPass(ctx.logical_device, ctx.render_pass, nil)
