@@ -122,23 +122,24 @@ create_swap_chain :: proc(ctx: ^Context) {
 create_image_views :: proc(ctx: ^Context) {
   ctx.swap_chain_image_views = make([dynamic]vk.ImageView, len(ctx.swap_chain_images))
   for i := 0; i < len(ctx.swap_chain_images); i+=1 {
-    image_view_create_info : vk.ImageViewCreateInfo
-    image_view_create_info.sType = vk.StructureType.IMAGE_VIEW_CREATE_INFO
-    image_view_create_info.image = ctx.swap_chain_images[i]
-    image_view_create_info.viewType = vk.ImageViewType.D2
-    image_view_create_info.format = ctx.swap_chain_image_format
-    image_view_create_info.components.r = vk.ComponentSwizzle.IDENTITY
-    image_view_create_info.components.g = vk.ComponentSwizzle.IDENTITY
-    image_view_create_info.components.b = vk.ComponentSwizzle.IDENTITY
-    image_view_create_info.components.a = vk.ComponentSwizzle.IDENTITY
-    image_view_create_info.subresourceRange.aspectMask = vk.ImageAspectFlags{vk.ImageAspectFlag.COLOR}
-    image_view_create_info.subresourceRange.baseMipLevel = 0
-    image_view_create_info.subresourceRange.levelCount = 1
-    image_view_create_info.subresourceRange.baseArrayLayer = 0
-    image_view_create_info.subresourceRange.layerCount = 1
-    if vk.CreateImageView(ctx.logical_device, &image_view_create_info, nil, &ctx.swap_chain_image_views[i]) != vk.Result.SUCCESS {
-      panic("Failed to create image views")
-    }
+    // image_view_create_info : vk.ImageViewCreateInfo
+    // image_view_create_info.sType = vk.StructureType.IMAGE_VIEW_CREATE_INFO
+    // image_view_create_info.image = ctx.swap_chain_images[i]
+    // image_view_create_info.viewType = vk.ImageViewType.D2
+    // image_view_create_info.format = ctx.swap_chain_image_format
+    // image_view_create_info.components.r = vk.ComponentSwizzle.IDENTITY
+    // image_view_create_info.components.g = vk.ComponentSwizzle.IDENTITY
+    // image_view_create_info.components.b = vk.ComponentSwizzle.IDENTITY
+    // image_view_create_info.components.a = vk.ComponentSwizzle.IDENTITY
+    // image_view_create_info.subresourceRange.aspectMask = vk.ImageAspectFlags{vk.ImageAspectFlag.COLOR}
+    // image_view_create_info.subresourceRange.baseMipLevel = 0
+    // image_view_create_info.subresourceRange.levelCount = 1
+    // image_view_create_info.subresourceRange.baseArrayLayer = 0
+    // image_view_create_info.subresourceRange.layerCount = 1
+    // if vk.CreateImageView(ctx.logical_device, &image_view_create_info, nil, &ctx.swap_chain_image_views[i]) != vk.Result.SUCCESS {
+    //   panic("Failed to create image views")
+    // }
+    ctx.swap_chain_image_views[i] = create_image_view(ctx, ctx.swap_chain_images[i], ctx.swap_chain_image_format)
   }
 }
 

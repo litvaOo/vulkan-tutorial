@@ -44,6 +44,10 @@ Context :: struct {
   descriptor_pool: vk.DescriptorPool,
   descriptor_sets: [dynamic]vk.DescriptorSet,
   ubo: UBO,
+  texture_image: vk.Image,
+  texture_image_memory: vk.DeviceMemory,
+  texture_image_view: vk.ImageView,
+  texture_sampler: vk.Sampler,
 }
 
 vertices := []Vertex{

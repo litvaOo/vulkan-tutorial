@@ -54,7 +54,7 @@ update_uniform_buffer :: proc(ctx: ^Context) {
 
   {
     // diff time is divided by ten because we are too fast
-    ctx.ubo.model = linalg.matrix_mul(linalg.identity(matrix[4,4]f32), linalg.matrix4_rotate_f32(90.0*f32(diff_time/20), [3]f32{0.0, 0.0, 1.0}))
+    ctx.ubo.model = linalg.matrix_mul(linalg.identity(matrix[4,4]f32), linalg.matrix4_rotate_f32(90.0*f32(diff_time/20), [3]f32{1.0, 0.0, 1.0}))
     ctx.ubo.view = linalg.matrix_mul(linalg.identity(matrix[4,4]f32), linalg.matrix4_look_at_f32([3]f32{2.0, 2.0, 2.0}, [3]f32{0.0, 0.0, 0.0}, [3]f32{0.0, 0.0, 1.0}))
     ctx.ubo.proj = linalg.matrix_mul(linalg.identity(matrix[4,4]f32), linalg.matrix4_perspective_f32(45.0, f32(ctx.swap_chain_extent.width)/f32(ctx.swap_chain_extent.height), 0.1, 10))
     ctx.ubo.proj[1][1] *= -1

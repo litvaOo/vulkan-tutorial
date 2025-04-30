@@ -140,6 +140,7 @@ create_logical_device :: proc (ctx: ^Context) {
   }
 
   device_features : vk.PhysicalDeviceFeatures
+  device_features.samplerAnisotropy = true
   device_create_info : vk.DeviceCreateInfo
   {
     device_create_info.sType = vk.StructureType.DEVICE_CREATE_INFO
@@ -149,6 +150,7 @@ create_logical_device :: proc (ctx: ^Context) {
     device_create_info.enabledExtensionCount = u32(len(device_extensions))
     device_create_info.ppEnabledExtensionNames = raw_data(device_extensions)
     device_create_info.enabledLayerCount = 0
+    
   }
 
   if vk.CreateDevice(ctx.physical_device, &device_create_info, nil, &ctx.logical_device) != vk.Result.SUCCESS {

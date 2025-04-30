@@ -127,43 +127,17 @@ create_buffer :: proc(ctx: ^Context,
 }
 
 copy_buffer :: proc(ctx: ^Context, src_buffer, dst_buffer: vk.Buffer, size: vk.DeviceSize) {
-  allocate_info: vk.CommandBufferAllocateInfo
-  {
-    allocate_info.sType = vk.StructureType.COMMAND_BUFFER_ALLOCATE_INFO
-    allocate_info.level = vk.CommandBufferLevel.PRIMARY
-    allocate_info.commandPool = ctx.command_pool
-    allocate_info.commandBufferCount = 1
-  }
-
-  command_buffer: vk.CommandBuffer
-  vk.AllocateCommandBuffers(ctx.logical_device, &allocate_info, &command_buffer)
-
-  begin_info: vk.CommandBufferBeginInfo
-  {
-    begin_info.sType = vk.StructureType.COMMAND_BUFFER_BEGIN_INFO
-    begin_info.flags = { vk.CommandBufferUsageFlag.ONE_TIME_SUBMIT }
-  }
-
-  vk.BeginCommandBuffer(command_buffer, &begin_info)
+  command_buffer := begin_single_time_commands(ctx)
 
   copy_region: vk.BufferCopy
-  copy_region.srcOffset = 0
-  copy_region.dstOffset = 0
-  copy_region.size = size
-
-  vk.CmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region)
-  vk.EndCommandBuffer(command_buffer)
-
-  submit_info: vk.SubmitInfo
   {
-    submit_info.sType = vk.StructureType.SUBMIT_INFO
-    submit_info.commandBufferCount = 1
-    submit_info.pCommandBuffers = &command_buffer
+    copy_region.srcOffset = 0
+    copy_region.dstOffset = 0
+    copy_region.size = size
   }
+  vk.CmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region)
 
-  vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, 0)
-  vk.QueueWaitIdle(ctx.graphics_queue)
-  vk.FreeCommandBuffers(ctx.logical_device, ctx.command_pool, 1, &command_buffer)
+  end_single_time_commands(ctx, &command_buffer)
 }
 
 find_memory_type :: proc(ctx: ^Context, type_filter: u32, properties: vk.MemoryPropertyFlags) -> u32 {
