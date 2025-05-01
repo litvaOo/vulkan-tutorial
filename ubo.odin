@@ -21,11 +21,22 @@ create_descriptor_set_layout :: proc(ctx: ^Context) {
     ubo_layout_binding.pImmutableSamplers = nil
   }
 
+  sampler_layout_binding: vk.DescriptorSetLayoutBinding
+  {
+    sampler_layout_binding.binding = 1
+    sampler_layout_binding.descriptorCount = 1
+    sampler_layout_binding.descriptorType = vk.DescriptorType.COMBINED_IMAGE_SAMPLER
+    sampler_layout_binding.pImmutableSamplers = nil
+    sampler_layout_binding.stageFlags = { .FRAGMENT }
+  }
+
+  bindings := []vk.DescriptorSetLayoutBinding{ubo_layout_binding, sampler_layout_binding}
+
   layout_info: vk.DescriptorSetLayoutCreateInfo
   {
     layout_info.sType = vk.StructureType.DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-    layout_info.bindingCount = 1
-    layout_info.pBindings = &ubo_layout_binding
+    layout_info.bindingCount = u32(len(bindings))
+    layout_info.pBindings = raw_data(bindings)
   }
 
   if vk.CreateDescriptorSetLayout(ctx.logical_device, &layout_info, nil, &ctx.descriptor_set_layout) != vk.Result.SUCCESS {
@@ -64,17 +75,19 @@ update_uniform_buffer :: proc(ctx: ^Context) {
 }
 
 create_descriptor_pool :: proc(ctx: ^Context) {
-  pool_size: vk.DescriptorPoolSize
+  pool_sizes : [2]vk.DescriptorPoolSize
   {
-    pool_size.type = vk.DescriptorType.UNIFORM_BUFFER
-    pool_size.descriptorCount = MAX_FRAMES_IN_FLIGHT
+    pool_sizes[0].type = vk.DescriptorType.UNIFORM_BUFFER
+    pool_sizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT
+    pool_sizes[1].type = vk.DescriptorType.COMBINED_IMAGE_SAMPLER
+    pool_sizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT
   }
 
   pool_info: vk.DescriptorPoolCreateInfo
   {
     pool_info.sType = vk.StructureType.DESCRIPTOR_POOL_CREATE_INFO
-    pool_info.poolSizeCount = 1
-    pool_info.pPoolSizes = &pool_size
+    pool_info.poolSizeCount = u32(len(pool_sizes))
+    pool_info.pPoolSizes = raw_data(&pool_sizes)
     pool_info.maxSets = MAX_FRAMES_IN_FLIGHT
   }
 

@@ -18,8 +18,10 @@ create_texture_image :: proc(ctx: ^Context) {
   staging_buffer_memory: vk.DeviceMemory
   create_buffer(ctx, image_size, {.TRANSFER_SRC}, {.HOST_VISIBLE, .HOST_COHERENT}, &staging_buffer, &staging_buffer_memory)
 
-  data: rawptr
-  vk.MapMemory(ctx.logical_device, staging_buffer_memory, 0, image_size, {}, &data)
+  data := mem.alloc(int(image_size)) or_else panic("Failed to alloc data for texture")
+  if vk.MapMemory(ctx.logical_device, staging_buffer_memory, 0, image_size, {}, &data) != vk.Result.SUCCESS {
+    panic("Failed to map memory")
+  }
   mem.copy(data, pixels, int(image_size))
   vk.UnmapMemory(ctx.logical_device, staging_buffer_memory)
 
