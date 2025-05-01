@@ -4,6 +4,7 @@ import glfw "vendor:glfw"
 import vk "vendor:vulkan"
 import "core:c"
 import "core:time"
+import "core:fmt"
 
 init_vulkan :: proc (ctx: ^Context) {
   // because odin does not automatically link correct vulkan addresses. sigh
@@ -23,9 +24,9 @@ init_vulkan :: proc (ctx: ^Context) {
   create_render_pass(ctx)
   create_descriptor_set_layout(ctx)
   create_graphics_pipeline(ctx)
-  create_framebuffers(ctx)
   create_command_pool(ctx)
   create_depth_resources(ctx)
+  create_framebuffers(ctx)
   create_texture_image(ctx)
   create_texture_image_view(ctx)
   create_texture_sampler(ctx)
@@ -83,7 +84,8 @@ draw_frame :: proc(ctx: ^Context) {
     submit_info.pSignalSemaphores = raw_data( signal_semaphores )
   }
 
-  if vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fences[ctx.current_frame]) != vk.Result.SUCCESS {
+  if res := vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fences[ctx.current_frame]); res != vk.Result.SUCCESS {
+    fmt.println(res)
     panic("Failed to submit queue")
   }
 

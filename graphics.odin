@@ -295,6 +295,22 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
     panic("Failed to create pipeline layout")
   }
 
+  depth_stencil: vk.PipelineDepthStencilStateCreateInfo
+  {
+    depth_stencil.sType = vk.StructureType.PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
+    depth_stencil.depthTestEnable = true
+    depth_stencil.depthWriteEnable = true
+
+    depth_stencil.depthCompareOp = .LESS
+    depth_stencil.depthBoundsTestEnable = false
+    depth_stencil.minDepthBounds = 0.0
+    depth_stencil.maxDepthBounds = 1.0
+
+    depth_stencil.stencilTestEnable = false
+    depth_stencil.front = {}
+    depth_stencil.back = {}
+  }
+
   pipeline_info: vk.GraphicsPipelineCreateInfo
   {
     pipeline_info.sType = vk.StructureType.GRAPHICS_PIPELINE_CREATE_INFO
@@ -305,7 +321,7 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
     pipeline_info.pViewportState = &viewport_state
     pipeline_info.pRasterizationState = &rasterizer
     pipeline_info.pMultisampleState = &multisampling
-    pipeline_info.pDepthStencilState = nil
+    pipeline_info.pDepthStencilState = &depth_stencil
     pipeline_info.pColorBlendState = &color_blending
     pipeline_info.pDynamicState = &dynamic_state
     pipeline_info.layout = ctx.pipeline_layout
@@ -340,26 +356,49 @@ create_render_pass :: proc(ctx: ^Context) {
     color_attachment_ref.layout = vk.ImageLayout.COLOR_ATTACHMENT_OPTIMAL
   }
 
+  depth_attachment: vk.AttachmentDescription
+  {
+    depth_attachment.format = find_depth_format(ctx)
+    depth_attachment.samples = {._1}
+    depth_attachment.loadOp = .CLEAR
+    depth_attachment.storeOp = .DONT_CARE
+    depth_attachment.stencilLoadOp = .DONT_CARE
+    depth_attachment.stencilStoreOp = .DONT_CARE
+    depth_attachment.initialLayout = .UNDEFINED
+    depth_attachment.finalLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+  }
+
+  depth_attachment_ref: vk.AttachmentReference
+  {
+    depth_attachment_ref.attachment = 1
+    depth_attachment_ref.layout = vk.ImageLayout.DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+  }
+
   subpass: vk.SubpassDescription
   {
     subpass.pipelineBindPoint = vk.PipelineBindPoint.GRAPHICS
     subpass.colorAttachmentCount = 1
     subpass.pColorAttachments = &color_attachment_ref
+    subpass.pDepthStencilAttachment = &depth_attachment_ref
   }
 
   dependency: vk.SubpassDependency
-  dependency.srcSubpass = vk.SUBPASS_EXTERNAL
-  dependency.dstSubpass = 0
-  dependency.srcStageMask = vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}
-  dependency.srcAccessMask = vk.AccessFlags{vk.AccessFlag.INDIRECT_COMMAND_READ}
-  dependency.dstStageMask = vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}
-  dependency.dstAccessMask = vk.AccessFlags{vk.AccessFlag.COLOR_ATTACHMENT_WRITE}
+  {
+    dependency.srcSubpass = vk.SUBPASS_EXTERNAL
+    dependency.dstSubpass = 0
+    dependency.srcStageMask = vk.PipelineStageFlags{.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS}
+    dependency.srcAccessMask = vk.AccessFlags{vk.AccessFlag.INDIRECT_COMMAND_READ}
+    dependency.dstStageMask = vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS}
+    dependency.dstAccessMask = vk.AccessFlags{vk.AccessFlag.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE}
+  }
+
+  attachments := []vk.AttachmentDescription{color_attachment, depth_attachment}
 
   render_pass_info: vk.RenderPassCreateInfo
   { 
     render_pass_info.sType = vk.StructureType.RENDER_PASS_CREATE_INFO
-    render_pass_info.attachmentCount = 1
-    render_pass_info.pAttachments = &color_attachment
+    render_pass_info.attachmentCount = u32(len(attachments))
+    render_pass_info.pAttachments = raw_data(attachments)
     render_pass_info.subpassCount = 1
     render_pass_info.pSubpasses = &subpass
     render_pass_info.dependencyCount = 1
@@ -374,13 +413,13 @@ create_render_pass :: proc(ctx: ^Context) {
 create_framebuffers :: proc(ctx: ^Context) {
   ctx.swap_chain_framebuffers = make([dynamic]vk.Framebuffer, len(ctx.swap_chain_image_views))
   for i := 0; i < len(ctx.swap_chain_image_views); i += 1 {
-    attachments := []vk.ImageView{ctx.swap_chain_image_views[i]}
+    attachments := []vk.ImageView{ctx.swap_chain_image_views[i], ctx.depth_image_view}
 
     framebuffer_info: vk.FramebufferCreateInfo
     {
       framebuffer_info.sType = vk.StructureType.FRAMEBUFFER_CREATE_INFO
       framebuffer_info.renderPass = ctx.render_pass
-      framebuffer_info.attachmentCount = 1
+      framebuffer_info.attachmentCount = u32(len(attachments))
       framebuffer_info.pAttachments = raw_data(attachments)
       framebuffer_info.width = ctx.swap_chain_extent.width
       framebuffer_info.height = ctx.swap_chain_extent.height
@@ -431,7 +470,9 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     panic("Failed to create buffer")
   }
 
-  clear_color := vk.ClearValue{color = {float32 = {0.0, 0.0, 0.0, 1.0}}}
+  clear_values : [2]vk.ClearValue
+  clear_values[0].color = {float32 = {0.0, 0.0, 0.0, 1.0}}
+  clear_values[1].depthStencil = {1.0, 0}
   render_pass_info: vk.RenderPassBeginInfo
   { 
     render_pass_info.sType = vk.StructureType.RENDER_PASS_BEGIN_INFO
@@ -439,8 +480,8 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
     render_pass_info.framebuffer = ctx.swap_chain_framebuffers[image_index]
     render_pass_info.renderArea.offset = {0, 0}
     render_pass_info.renderArea.extent = ctx.swap_chain_extent
-    render_pass_info.clearValueCount = 1
-    render_pass_info.pClearValues = &clear_color
+    render_pass_info.clearValueCount = u32(len(clear_values))
+    render_pass_info.pClearValues = raw_data(&clear_values)
   }
 
   vertex_buffers := []vk.Buffer{ctx.vertex_buffer}

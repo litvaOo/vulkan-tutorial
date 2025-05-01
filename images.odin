@@ -32,7 +32,7 @@ create_texture_image :: proc(ctx: ^Context) {
 
   transition_image_layout(ctx, ctx.texture_image, vk.Format.R8G8B8A8_SRGB, vk.ImageLayout.UNDEFINED, vk.ImageLayout.TRANSFER_DST_OPTIMAL)
   copy_buffer_to_image(ctx, staging_buffer, ctx.texture_image, tex_width, tex_height)
-
+ 
   transition_image_layout(ctx, ctx.texture_image, vk.Format.R8G8B8A8_SRGB, vk.ImageLayout.TRANSFER_DST_OPTIMAL, vk.ImageLayout.SHADER_READ_ONLY_OPTIMAL)
 }
 
@@ -99,6 +99,16 @@ transition_image_layout :: proc(ctx: ^Context, image: vk.Image, format: vk.Forma
     barrier.subresourceRange.layerCount = 1
   }
 
+  if new_layout == vk.ImageLayout.DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+    barrier.subresourceRange.aspectMask = {.DEPTH}
+
+    if has_stencil_component(ctx, format) {
+      barrier.subresourceRange.aspectMask = {.DEPTH, .STENCIL}
+    }
+  } else {
+    barrier.subresourceRange.aspectMask = {.COLOR}
+  }
+
   destination_stage, source_stage: vk.PipelineStageFlags
   if old_layout == vk.ImageLayout.UNDEFINED && new_layout == vk.ImageLayout.TRANSFER_DST_OPTIMAL {
     barrier.srcAccessMask = {}
@@ -112,6 +122,13 @@ transition_image_layout :: proc(ctx: ^Context, image: vk.Image, format: vk.Forma
 
     source_stage = {.TRANSFER}
     destination_stage = { .FRAGMENT_SHADER}
+  } else if old_layout == vk.ImageLayout.UNDEFINED && new_layout == vk.ImageLayout.DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+    barrier.srcAccessMask = {}
+    barrier.dstAccessMask = {.DEPTH_STENCIL_ATTACHMENT_READ, .DEPTH_STENCIL_ATTACHMENT_WRITE}
+
+    source_stage = {.TOP_OF_PIPE}
+    destination_stage = {.EARLY_FRAGMENT_TESTS}
+
   } else {
     panic("Incorrect conversion of image")
   }
@@ -146,17 +163,17 @@ copy_buffer_to_image :: proc(ctx: ^Context, buffer: vk.Buffer, image: vk.Image,
 }
 
 create_texture_image_view :: proc(ctx: ^Context) {
-  ctx.texture_image_view = create_image_view(ctx, ctx.texture_image, vk.Format.R8G8B8A8_SRGB)
+  ctx.texture_image_view = create_image_view(ctx, ctx.texture_image, vk.Format.R8G8B8A8_SRGB, {.COLOR})
 }
 
-create_image_view :: proc(ctx: ^Context, image: vk.Image, format: vk.Format) -> vk.ImageView {
+create_image_view :: proc(ctx: ^Context, image: vk.Image, format: vk.Format, aspectFlags: vk.ImageAspectFlags) -> vk.ImageView {
   view_info: vk.ImageViewCreateInfo
   {
     view_info.sType = vk.StructureType.IMAGE_VIEW_CREATE_INFO
     view_info.image = image
     view_info.viewType = vk.ImageViewType.D2
     view_info.format = format
-    view_info.subresourceRange.aspectMask = {.COLOR}
+    view_info.subresourceRange.aspectMask = aspectFlags
     view_info.subresourceRange.baseMipLevel = 0
     view_info.subresourceRange.levelCount = 1
     view_info.subresourceRange.baseArrayLayer = 0
@@ -201,7 +218,14 @@ create_texture_sampler :: proc(ctx: ^Context) {
 }
 
 create_depth_resources :: proc(ctx: ^Context) {
+  depth_format := find_depth_format(ctx)
 
+  create_image(ctx, i32(ctx.swap_chain_extent.width), i32(ctx.swap_chain_extent.height),
+                depth_format, .OPTIMAL, {.DEPTH_STENCIL_ATTACHMENT}, {.DEVICE_LOCAL},
+                &ctx.depth_image, &ctx.depth_image_memory)
+  ctx.depth_image_view = create_image_view(ctx, ctx.depth_image, depth_format, { .DEPTH })
+
+  transition_image_layout(ctx, ctx.depth_image, depth_format, vk.ImageLayout.UNDEFINED, vk.ImageLayout.DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 }
 
 find_supported_format :: proc(ctx: ^Context, candidates: []vk.Format, tiling: vk.ImageTiling, features: vk.FormatFeatureFlags) -> vk.Format {
@@ -221,4 +245,8 @@ find_supported_format :: proc(ctx: ^Context, candidates: []vk.Format, tiling: vk
 
 find_depth_format :: proc(ctx: ^Context) -> vk.Format {
   return find_supported_format(ctx, {.D32_SFLOAT, .D32_SFLOAT_S8_UINT, .D24_UNORM_S8_UINT}, vk.ImageTiling.OPTIMAL, { .DEPTH_STENCIL_ATTACHMENT })
+}
+
+has_stencil_component :: proc(ctx: ^Context, format: vk.Format) -> bool {
+  return format == vk.Format.D32_SFLOAT_S8_UINT || format == vk.Format.D24_UNORM_S8_UINT
 }
