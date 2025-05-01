@@ -10,7 +10,8 @@ Color :: [3]f32
 
 Vertex :: struct {
   pos: Vec2,
-  color: Color
+  color: Color,
+  tex_coord: Vec2,
 }
 
 get_binding_description :: proc(ctx: ^Context) -> vk.VertexInputBindingDescription {
@@ -24,7 +25,7 @@ get_binding_description :: proc(ctx: ^Context) -> vk.VertexInputBindingDescripti
 }
 
 get_attribute_descriptions :: proc(ctx: ^Context) -> []vk.VertexInputAttributeDescription {
-  attribute_descriptions := make([]vk.VertexInputAttributeDescription, 2)
+  attribute_descriptions := make([]vk.VertexInputAttributeDescription, 3)
 
   {
     attribute_descriptions[0].binding = 0
@@ -37,6 +38,12 @@ get_attribute_descriptions :: proc(ctx: ^Context) -> []vk.VertexInputAttributeDe
     attribute_descriptions[1].location = 1
     attribute_descriptions[1].format = vk.Format.R32G32B32_SFLOAT
     attribute_descriptions[1].offset = u32(offset_of(Vertex, color))
+  }
+  {
+    attribute_descriptions[2].binding = 0
+    attribute_descriptions[2].location = 2
+    attribute_descriptions[2].format = vk.Format.R32G32_SFLOAT
+    attribute_descriptions[2].offset = u32(offset_of(Vertex, tex_coord))
   }
 
   return attribute_descriptions

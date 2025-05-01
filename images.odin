@@ -6,7 +6,8 @@ import "core:mem"
 
 create_texture_image :: proc(ctx: ^Context) {
   tex_width, tex_height, tex_channels: i32
-  pixels := stb.load("texture.jpg", &tex_width, &tex_height, &tex_channels, 0)
+  // stbi_rgb_alpha = 4 for desired_channel
+  pixels := stb.load("texture.jpg", &tex_width, &tex_height, &tex_channels, 4)
   defer   stb.image_free(pixels)
 
   image_size : = vk.DeviceSize(tex_width * tex_height * 4)

@@ -123,19 +123,40 @@ create_descriptor_sets :: proc(ctx: ^Context) {
       buffer_info.range = size_of(UBO)
     }
 
-    descriptor_write: vk.WriteDescriptorSet
+    image_info: vk.DescriptorImageInfo
     {
-      descriptor_write.sType = vk.StructureType.WRITE_DESCRIPTOR_SET
-      descriptor_write.dstSet = ctx.descriptor_sets[i]
-      descriptor_write.dstBinding = 0
-      descriptor_write.dstArrayElement = 0
-      descriptor_write.descriptorType = vk.DescriptorType.UNIFORM_BUFFER
-      descriptor_write.descriptorCount = 1
-      descriptor_write.pBufferInfo = &buffer_info
-      descriptor_write.pImageInfo = nil
-      descriptor_write.pTexelBufferView = nil
+      image_info.imageLayout = vk.ImageLayout.SHADER_READ_ONLY_OPTIMAL
+      image_info.imageView = ctx.texture_image_view
+      image_info.sampler = ctx.texture_sampler
     }
 
-    vk.UpdateDescriptorSets(ctx.logical_device, 1, &descriptor_write, 0, nil)
+    descriptor_writes: [2]vk.WriteDescriptorSet
+    {
+      {
+        descriptor_writes[0].sType = vk.StructureType.WRITE_DESCRIPTOR_SET
+        descriptor_writes[0].dstSet = ctx.descriptor_sets[i]
+        descriptor_writes[0].dstBinding = 0
+        descriptor_writes[0].dstArrayElement = 0
+        descriptor_writes[0].descriptorType = vk.DescriptorType.UNIFORM_BUFFER
+        descriptor_writes[0].descriptorCount = 1
+        descriptor_writes[0].pBufferInfo = &buffer_info
+        descriptor_writes[0].pImageInfo = nil
+        descriptor_writes[0].pTexelBufferView = nil
+      }
+
+      {
+        descriptor_writes[1].sType = vk.StructureType.WRITE_DESCRIPTOR_SET
+        descriptor_writes[1].dstSet = ctx.descriptor_sets[i]
+        descriptor_writes[1].dstBinding = 1
+        descriptor_writes[1].dstArrayElement = 0
+        descriptor_writes[1].descriptorType = vk.DescriptorType.COMBINED_IMAGE_SAMPLER
+        descriptor_writes[1].descriptorCount = 1
+        descriptor_writes[1].pImageInfo = &image_info
+        descriptor_writes[1].pBufferInfo = nil
+        descriptor_writes[1].pTexelBufferView = nil
+      }
+    }
+
+    vk.UpdateDescriptorSets(ctx.logical_device, len(descriptor_writes), raw_data(&descriptor_writes), 0, nil)
   }
 }
