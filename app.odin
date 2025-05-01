@@ -25,6 +25,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_graphics_pipeline(ctx)
   create_framebuffers(ctx)
   create_command_pool(ctx)
+  create_depth_resources(ctx)
   create_texture_image(ctx)
   create_texture_image_view(ctx)
   create_texture_sampler(ctx)

@@ -9,7 +9,7 @@ Vec4 :: [4]f32
 Color :: [3]f32
 
 Vertex :: struct {
-  pos: Vec2,
+  pos: Vec3,
   color: Color,
   tex_coord: Vec2,
 }
@@ -30,7 +30,7 @@ get_attribute_descriptions :: proc(ctx: ^Context) -> []vk.VertexInputAttributeDe
   {
     attribute_descriptions[0].binding = 0
     attribute_descriptions[0].location = 0
-    attribute_descriptions[0].format = vk.Format.R32G32_SFLOAT
+    attribute_descriptions[0].format = vk.Format.R32G32B32_SFLOAT
     attribute_descriptions[0].offset = u32(offset_of(Vertex, pos))
   }
   {

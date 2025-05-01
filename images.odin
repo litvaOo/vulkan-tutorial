@@ -199,3 +199,26 @@ create_texture_sampler :: proc(ctx: ^Context) {
     panic("Failed to create texture samplers")
   }
 }
+
+create_depth_resources :: proc(ctx: ^Context) {
+
+}
+
+find_supported_format :: proc(ctx: ^Context, candidates: []vk.Format, tiling: vk.ImageTiling, features: vk.FormatFeatureFlags) -> vk.Format {
+  for format in candidates {
+    props: vk.FormatProperties
+    vk.GetPhysicalDeviceFormatProperties(ctx.physical_device, format, &props)
+
+    if tiling == vk.ImageTiling.LINEAR && props.linearTilingFeatures & features == features {
+      return format
+    }
+    if tiling == vk.ImageTiling.OPTIMAL && props.optimalTilingFeatures & features == features {
+      return format
+    }
+  }
+  panic("Failed to find supported format")
+}
+
+find_depth_format :: proc(ctx: ^Context) -> vk.Format {
+  return find_supported_format(ctx, {.D32_SFLOAT, .D32_SFLOAT_S8_UINT, .D24_UNORM_S8_UINT}, vk.ImageTiling.OPTIMAL, { .DEPTH_STENCIL_ATTACHMENT })
+}
