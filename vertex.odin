@@ -2,6 +2,7 @@ package main
 
 import vk "vendor:vulkan"
 import "core:mem"
+import "core:fmt"
 
 Vec2 :: [2]f32
 Vec3 :: [3]f32
@@ -50,7 +51,7 @@ get_attribute_descriptions :: proc(ctx: ^Context) -> []vk.VertexInputAttributeDe
 }
 
 create_vertex_buffer :: proc(ctx: ^Context) {
-  buffer_size := vk.DeviceSize(size_of(vertices[0]) * len(vertices))
+  buffer_size := vk.DeviceSize(size_of(ctx.vertices[0]) * len(ctx.vertices))
 
   staging_buffer: vk.Buffer
   staging_buffer_memory: vk.DeviceMemory
@@ -63,7 +64,7 @@ create_vertex_buffer :: proc(ctx: ^Context) {
   if vk.MapMemory(ctx.logical_device, staging_buffer_memory, 0, buffer_size, vk.MemoryMapFlags{vk.MemoryMapFlag.PLACED_EXT}, &data) != vk.Result.SUCCESS {
     panic("Failed to map memory")
   }
-  mem.copy(data, raw_data(vertices), int(buffer_size))
+  mem.copy(data, raw_data(ctx.vertices), int(buffer_size))
   vk.UnmapMemory(ctx.logical_device, staging_buffer_memory)
 
   create_buffer(ctx, buffer_size,
@@ -76,7 +77,7 @@ create_vertex_buffer :: proc(ctx: ^Context) {
 }
 
 create_index_buffer :: proc(ctx: ^Context) {
-  buffer_size := vk.DeviceSize(size_of(indices[0])*len(indices))
+  buffer_size := vk.DeviceSize(size_of(ctx.indices[0])*len(ctx.indices))
 
   staging_buffer: vk.Buffer
   staging_buffer_memory: vk.DeviceMemory
@@ -89,7 +90,7 @@ create_index_buffer :: proc(ctx: ^Context) {
   if vk.MapMemory(ctx.logical_device, staging_buffer_memory, 0, buffer_size, vk.MemoryMapFlags{vk.MemoryMapFlag.PLACED_EXT}, &data) != vk.Result.SUCCESS {
     panic("Failed to map memory")
   }
-  mem.copy(data, raw_data(indices), int(buffer_size))
+  mem.copy(data, raw_data(ctx.indices), int(buffer_size))
   vk.UnmapMemory(ctx.logical_device, staging_buffer_memory)
 
   create_buffer(ctx, buffer_size,
@@ -126,7 +127,8 @@ create_buffer :: proc(ctx: ^Context,
     allocate_info.memoryTypeIndex = find_memory_type(ctx, mem_requirements.memoryTypeBits, properties)
   }
 
-  if vk.AllocateMemory(ctx.logical_device, &allocate_info, nil, buffer_memory) != vk.Result.SUCCESS {
+  if res := vk.AllocateMemory(ctx.logical_device, &allocate_info, nil, buffer_memory); res != vk.Result.SUCCESS {
+    fmt.println(res)
     panic("Failed to allocate memory")
   }
 

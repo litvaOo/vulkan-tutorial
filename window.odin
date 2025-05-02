@@ -7,6 +7,9 @@ import "base:runtime"
 WIDTH :: 800
 HEIGHT :: 600
 
+MODEL_PATH :: "models/crab.obj"
+TEXTURE_PATH :: "textures/crab.png"
+
 
 glfw_error_callback :: proc "c" (error: i32, description: cstring ){
   context = runtime.default_context()

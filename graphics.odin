@@ -513,7 +513,7 @@ record_command_buffer :: proc(ctx: ^Context, image_index: u32) {
   }
   vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
 
-  vk.CmdDrawIndexed(ctx.command_buffers[ctx.current_frame], u32(len(indices)), 1, 0, 0, 0)
+  vk.CmdDrawIndexed(ctx.command_buffers[ctx.current_frame], u32(len(ctx.indices)), 1, 0, 0, 0)
 
   vk.CmdEndRenderPass(ctx.command_buffers[ctx.current_frame])
 

@@ -30,6 +30,7 @@ init_vulkan :: proc (ctx: ^Context) {
   create_texture_image(ctx)
   create_texture_image_view(ctx)
   create_texture_sampler(ctx)
+  load_mesh_obj_data(ctx)
   create_vertex_buffer(ctx)
   create_index_buffer(ctx)
   create_uniform_buffer(ctx)
