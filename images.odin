@@ -224,7 +224,7 @@ create_texture_sampler :: proc(ctx: ^Context) {
 create_depth_resources :: proc(ctx: ^Context) {
   depth_format := find_depth_format(ctx)
 
-  create_image(ctx, i32(ctx.swap_chain_extent.width), i32(ctx.swap_chain_extent.height), ctx.mip_levels,
+  create_image(ctx, i32(ctx.swap_chain_extent.width), i32(ctx.swap_chain_extent.height), 1,
                 depth_format, .OPTIMAL, {.DEPTH_STENCIL_ATTACHMENT}, {.DEVICE_LOCAL},
                 &ctx.depth_image, &ctx.depth_image_memory)
   ctx.depth_image_view = create_image_view(ctx, ctx.depth_image, depth_format, { .DEPTH }, ctx.mip_levels)
