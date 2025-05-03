@@ -157,11 +157,15 @@ recreate_swap_chain :: proc(ctx: ^Context) {
 
   create_swap_chain(ctx)
   create_image_views(ctx)
+  create_color_resources(ctx)
   create_depth_resources(ctx)
   create_framebuffers(ctx)
 }
 
 cleanup_swap_chain :: proc(ctx: ^Context) {
+  vk.DestroyImageView(ctx.logical_device, ctx.color_image_view, nil)
+  vk.DestroyImage(ctx.logical_device, ctx.color_image, nil)
+  vk.FreeMemory(ctx.logical_device, ctx.color_image_memory, nil)
   for framebuffer in ctx.swap_chain_framebuffers {
     vk.DestroyFramebuffer(ctx.logical_device, framebuffer, nil)
   }

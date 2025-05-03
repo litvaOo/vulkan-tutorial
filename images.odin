@@ -27,7 +27,7 @@ create_texture_image :: proc(ctx: ^Context) {
   mem.copy(data, pixels, int(image_size))
   vk.UnmapMemory(ctx.logical_device, staging_buffer_memory)
 
-  create_image(ctx, tex_width, tex_height, ctx.mip_levels,
+  create_image(ctx, tex_width, tex_height, ctx.mip_levels, {._1},
               vk.Format.R8G8B8A8_SRGB, vk.ImageTiling.OPTIMAL, {.TRANSFER_SRC, .TRANSFER_DST, .SAMPLED},
               {.DEVICE_LOCAL}, &ctx.texture_image, &ctx.texture_image_memory)
 
@@ -40,7 +40,7 @@ create_texture_image :: proc(ctx: ^Context) {
 }
 
 create_image :: proc(ctx: ^Context,
-                    width, height: i32, mip_levels: u32, format: vk.Format, tiling: vk.ImageTiling,
+                    width, height: i32, mip_levels: u32, num_samples: vk.SampleCountFlags, format: vk.Format, tiling: vk.ImageTiling,
                     usage: vk.ImageUsageFlags, properties: vk.MemoryPropertyFlags,
                     image: ^vk.Image, image_memory: ^vk.DeviceMemory) {
     image_info: vk.ImageCreateInfo
@@ -57,7 +57,7 @@ create_image :: proc(ctx: ^Context,
       image_info.initialLayout = vk.ImageLayout.UNDEFINED
       image_info.usage = usage
       image_info.sharingMode = vk.SharingMode.EXCLUSIVE
-      image_info.samples = { ._1 }
+      image_info.samples = num_samples
       image_info.flags = {}
       image_info.mipLevels = mip_levels
     }
@@ -224,7 +224,7 @@ create_texture_sampler :: proc(ctx: ^Context) {
 create_depth_resources :: proc(ctx: ^Context) {
   depth_format := find_depth_format(ctx)
 
-  create_image(ctx, i32(ctx.swap_chain_extent.width), i32(ctx.swap_chain_extent.height), 1,
+  create_image(ctx, i32(ctx.swap_chain_extent.width), i32(ctx.swap_chain_extent.height), 1, ctx.msaa_samples,
                 depth_format, .OPTIMAL, {.DEPTH_STENCIL_ATTACHMENT}, {.DEVICE_LOCAL},
                 &ctx.depth_image, &ctx.depth_image_memory)
   ctx.depth_image_view = create_image_view(ctx, ctx.depth_image, depth_format, { .DEPTH }, ctx.mip_levels)

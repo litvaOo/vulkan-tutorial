@@ -54,6 +54,10 @@ Context :: struct {
   depth_image_view: vk.ImageView,
   vertices: [dynamic]Vertex,
   indices: [dynamic]u32,
+  msaa_samples: vk.SampleCountFlags,
+  color_image: vk.Image,
+  color_image_memory: vk.DeviceMemory,
+  color_image_view: vk.ImageView,
 }
 
 main :: proc () {
@@ -62,6 +66,7 @@ main :: proc () {
   ctx.enable_validation_layers = false
   ctx.framebuffer_resized = false
   ctx.start_time = time.now()
+  ctx.msaa_samples = {._1}
   when ODIN_DEBUG {
     ctx.enable_validation_layers = true
   }

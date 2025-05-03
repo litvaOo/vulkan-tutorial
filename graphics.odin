@@ -78,6 +78,7 @@ pick_physical_device :: proc (ctx: ^Context) {
   for i := u32(0); i < device_count; i += 1 {
     if (is_device_suitable(ctx, devices[i])) {
       ctx.physical_device = devices[i]
+      ctx.msaa_samples = get_max_usable_sample_count(ctx)
       break
     }
   }
@@ -141,6 +142,7 @@ create_logical_device :: proc (ctx: ^Context) {
 
   device_features : vk.PhysicalDeviceFeatures
   device_features.samplerAnisotropy = true
+  device_features.sampleRateShading = true
   device_create_info : vk.DeviceCreateInfo
   {
     device_create_info.sType = vk.StructureType.DEVICE_CREATE_INFO
@@ -235,9 +237,9 @@ create_graphics_pipeline :: proc(ctx: ^Context) {
   multisampling : vk.PipelineMultisampleStateCreateInfo
   {
     multisampling.sType = vk.StructureType.PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-    multisampling.sampleShadingEnable = false
-    multisampling.rasterizationSamples = vk.SampleCountFlags{vk.SampleCountFlag._1}
-    multisampling.minSampleShading = 1.0
+    multisampling.sampleShadingEnable = true
+    multisampling.rasterizationSamples = ctx.msaa_samples
+    multisampling.minSampleShading = 0.2
     multisampling.pSampleMask = nil
     multisampling.alphaToCoverageEnable = false
     multisampling.alphaToOneEnable = false
@@ -341,13 +343,13 @@ create_render_pass :: proc(ctx: ^Context) {
   color_attachment: vk.AttachmentDescription
   {
     color_attachment.format = ctx.swap_chain_image_format
-    color_attachment.samples = vk.SampleCountFlags{vk.SampleCountFlag._1}
+    color_attachment.samples = ctx.msaa_samples
     color_attachment.loadOp = vk.AttachmentLoadOp.CLEAR
     color_attachment.storeOp = vk.AttachmentStoreOp.STORE
     color_attachment.stencilLoadOp = vk.AttachmentLoadOp.DONT_CARE
     color_attachment.stencilStoreOp = vk.AttachmentStoreOp.DONT_CARE
     color_attachment.initialLayout = vk.ImageLayout.UNDEFINED
-    color_attachment.finalLayout = vk.ImageLayout.PRESENT_SRC_KHR
+    color_attachment.finalLayout = vk.ImageLayout.COLOR_ATTACHMENT_OPTIMAL
   }
 
   color_attachment_ref: vk.AttachmentReference
@@ -356,10 +358,28 @@ create_render_pass :: proc(ctx: ^Context) {
     color_attachment_ref.layout = vk.ImageLayout.COLOR_ATTACHMENT_OPTIMAL
   }
 
+  color_attachment_resolve: vk.AttachmentDescription
+  {
+    color_attachment_resolve.format = ctx.swap_chain_image_format
+    color_attachment_resolve.samples = {._1}
+    color_attachment_resolve.loadOp = .DONT_CARE
+    color_attachment_resolve.storeOp = .STORE
+    color_attachment_resolve.stencilLoadOp = .DONT_CARE
+    color_attachment_resolve.stencilStoreOp = .DONT_CARE
+    color_attachment_resolve.initialLayout = .UNDEFINED
+    color_attachment_resolve.finalLayout = .PRESENT_SRC_KHR
+  }
+
+  color_attachment_resolve_ref: vk.AttachmentReference
+  {
+    color_attachment_resolve_ref.attachment = 2
+    color_attachment_resolve_ref.layout = .COLOR_ATTACHMENT_OPTIMAL
+  }
+
   depth_attachment: vk.AttachmentDescription
   {
     depth_attachment.format = find_depth_format(ctx)
-    depth_attachment.samples = {._1}
+    depth_attachment.samples = ctx.msaa_samples
     depth_attachment.loadOp = .CLEAR
     depth_attachment.storeOp = .DONT_CARE
     depth_attachment.stencilLoadOp = .DONT_CARE
@@ -379,6 +399,7 @@ create_render_pass :: proc(ctx: ^Context) {
     subpass.pipelineBindPoint = vk.PipelineBindPoint.GRAPHICS
     subpass.colorAttachmentCount = 1
     subpass.pColorAttachments = &color_attachment_ref
+    subpass.pResolveAttachments = &color_attachment_resolve_ref
     subpass.pDepthStencilAttachment = &depth_attachment_ref
   }
 
@@ -392,7 +413,7 @@ create_render_pass :: proc(ctx: ^Context) {
     dependency.dstAccessMask = vk.AccessFlags{vk.AccessFlag.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE}
   }
 
-  attachments := []vk.AttachmentDescription{color_attachment, depth_attachment}
+  attachments := []vk.AttachmentDescription{color_attachment, depth_attachment, color_attachment_resolve}
 
   render_pass_info: vk.RenderPassCreateInfo
   { 
@@ -413,7 +434,7 @@ create_render_pass :: proc(ctx: ^Context) {
 create_framebuffers :: proc(ctx: ^Context) {
   ctx.swap_chain_framebuffers = make([dynamic]vk.Framebuffer, len(ctx.swap_chain_image_views))
   for i := 0; i < len(ctx.swap_chain_image_views); i += 1 {
-    attachments := []vk.ImageView{ctx.swap_chain_image_views[i], ctx.depth_image_view}
+    attachments := []vk.ImageView{ctx.swap_chain_image_views[i], ctx.depth_image_view, ctx.color_image_view}
 
     framebuffer_info: vk.FramebufferCreateInfo
     {
