@@ -139,7 +139,7 @@ create_image_views :: proc(ctx: ^Context) {
     // if vk.CreateImageView(ctx.logical_device, &image_view_create_info, nil, &ctx.swap_chain_image_views[i]) != vk.Result.SUCCESS {
     //   panic("Failed to create image views")
     // }
-    ctx.swap_chain_image_views[i] = create_image_view(ctx, ctx.swap_chain_images[i], ctx.swap_chain_image_format, { .COLOR })
+    ctx.swap_chain_image_views[i] = create_image_view(ctx, ctx.swap_chain_images[i], ctx.swap_chain_image_format, { .COLOR }, ctx.mip_levels)
   }
 }
 
