@@ -434,7 +434,7 @@ create_render_pass :: proc(ctx: ^Context) {
 create_framebuffers :: proc(ctx: ^Context) {
   ctx.swap_chain_framebuffers = make([dynamic]vk.Framebuffer, len(ctx.swap_chain_image_views))
   for i := 0; i < len(ctx.swap_chain_image_views); i += 1 {
-    attachments := []vk.ImageView{ctx.swap_chain_image_views[i], ctx.depth_image_view, ctx.color_image_view}
+    attachments := []vk.ImageView{ctx.color_image_view, ctx.depth_image_view, ctx.swap_chain_image_views[i] }
 
     framebuffer_info: vk.FramebufferCreateInfo
     {
