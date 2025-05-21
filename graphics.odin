@@ -23,13 +23,16 @@ create_vk_instance :: proc(ctx: ^Context) {
   }
 
   create_info: vk.InstanceCreateInfo
-  glfw_extension_count : u32
-  glfw_extensions := glfw_bindings.GetRequiredInstanceExtensions(&glfw_extension_count)
+  glfw_extensions := slice.clone_to_dynamic(glfw.GetRequiredInstanceExtensions())
+  when ODIN_OS == .Darwin {
+		create_info.flags |= {.ENUMERATE_PORTABILITY_KHR}
+		append(&glfw_extensions, vk.KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)
+	}
   {
     create_info.sType = vk.StructureType.INSTANCE_CREATE_INFO
     create_info.pApplicationInfo = &app_info
-    create_info.enabledExtensionCount = glfw_extension_count
-    create_info.ppEnabledExtensionNames = glfw_extensions
+    create_info.enabledExtensionCount = u32(len(glfw_extensions))
+    create_info.ppEnabledExtensionNames = raw_data(glfw_extensions)
     create_info.enabledLayerCount = 0
   }
 

@@ -7,6 +7,12 @@ import vk "vendor:vulkan"
 
 MAX_FRAMES_IN_FLIGHT :: u32(2)
 
+when ODIN_OS == .Darwin {
+  // just.. i just hate this device
+	@(require, extra_linker_flags = "-rpath /opt/homebrew/lib -rpath /usr/local/lib")
+	foreign import __ "system:System.framework"
+}
+
 Context :: struct {
   window: glfw.WindowHandle,
   instance : vk.Instance,
@@ -66,6 +72,7 @@ main :: proc () {
   ctx.enable_validation_layers = false
   ctx.framebuffer_resized = false
   ctx.start_time = time.now()
+  ctx.mip_levels = 1
   ctx.msaa_samples = {._1}
   when ODIN_DEBUG {
     ctx.enable_validation_layers = true
