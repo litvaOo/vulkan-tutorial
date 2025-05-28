@@ -67,9 +67,8 @@ draw_frame :: proc(ctx: ^Context) {
 
   vk.ResetCommandBuffer(ctx.command_buffers[ctx.current_frame], vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
   record_command_buffer: {
-      begin_info: vk.CommandBufferBeginInfo
-      {
-        begin_info.sType = vk.StructureType.COMMAND_BUFFER_BEGIN_INFO
+      begin_info := vk.CommandBufferBeginInfo{
+        sType = .COMMAND_BUFFER_BEGIN_INFO
       }
 
       vk_handler(vk.BeginCommandBuffer(ctx.command_buffers[ctx.current_frame], &begin_info))
@@ -77,15 +76,16 @@ draw_frame :: proc(ctx: ^Context) {
       clear_values : [2]vk.ClearValue
       clear_values[0].color = {float32 = {0.0, 0.0, 0.0, 1.0}}
       clear_values[1].depthStencil = {1.0, 0}
-      render_pass_info: vk.RenderPassBeginInfo
-      { 
-        render_pass_info.sType = vk.StructureType.RENDER_PASS_BEGIN_INFO
-        render_pass_info.renderPass = ctx.render_pass
-        render_pass_info.framebuffer = ctx.swap_chain_framebuffers[image_index]
-        render_pass_info.renderArea.offset = {0, 0}
-        render_pass_info.renderArea.extent = ctx.swap_chain_extent
-        render_pass_info.clearValueCount = u32(len(clear_values))
-        render_pass_info.pClearValues = raw_data(&clear_values)
+      render_pass_info := vk.RenderPassBeginInfo{ 
+        sType = .RENDER_PASS_BEGIN_INFO,
+        renderPass = ctx.render_pass,
+        framebuffer = ctx.swap_chain_framebuffers[image_index],
+        renderArea = {
+          offset = {0, 0},
+          extent = ctx.swap_chain_extent,
+        },
+        clearValueCount = u32(len(clear_values)),
+        pClearValues = raw_data(&clear_values),
       }
 
       vertex_buffers := []vk.Buffer{ctx.vertex_buffer}
@@ -99,21 +99,19 @@ draw_frame :: proc(ctx: ^Context) {
         vk.CmdBindDescriptorSets(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.pipeline_layout, 0, 1, &ctx.descriptor_sets[ctx.current_frame], 0, nil)
       }
 
-      viewport: vk.Viewport
-      {
-        viewport.x = 0.0
-        viewport.y = 0.0
-        viewport.width = f32( ctx.swap_chain_extent.width )
-        viewport.height = f32( ctx.swap_chain_extent.height )
-        viewport.minDepth = 0.0
-        viewport.maxDepth = 1.0
+      viewport := vk.Viewport{
+        x = 0.0,
+        y = 0.0,
+        width = f32( ctx.swap_chain_extent.width ),
+        height = f32( ctx.swap_chain_extent.height ),
+        minDepth = 0.0,
+        maxDepth = 1.0,
       }
       vk.CmdSetViewport(ctx.command_buffers[ctx.current_frame], 0, 1, &viewport)
 
-      scissor: vk.Rect2D
-      {
-        scissor.offset = {0, 0}
-        scissor.extent = ctx.swap_chain_extent
+      scissor := vk.Rect2D{
+        offset = {0, 0},
+        extent = ctx.swap_chain_extent,
       }
       vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
 
@@ -133,38 +131,31 @@ draw_frame :: proc(ctx: ^Context) {
   wait_stages := []vk.PipelineStageFlags{vk.PipelineStageFlags{vk.PipelineStageFlag.COLOR_ATTACHMENT_OUTPUT}}
   signal_semaphores := []vk.Semaphore{ctx.render_finished_semaphores[ctx.current_frame]}
 
-  submit_info: vk.SubmitInfo
-  {
-    submit_info.sType = vk.StructureType.SUBMIT_INFO
-    submit_info.waitSemaphoreCount = 1
-    submit_info.pWaitSemaphores = raw_data( wait_semaphores )
-    submit_info.pWaitDstStageMask = raw_data( wait_stages )
-    submit_info.commandBufferCount = 1
-    submit_info.pCommandBuffers = &ctx.command_buffers[ctx.current_frame]
-    submit_info.signalSemaphoreCount = 1
-    submit_info.pSignalSemaphores = raw_data( signal_semaphores )
+  submit_info := vk.SubmitInfo{
+    sType = .SUBMIT_INFO,
+    waitSemaphoreCount = 1,
+    pWaitSemaphores = raw_data( wait_semaphores ),
+    pWaitDstStageMask = raw_data( wait_stages ),
+    commandBufferCount = 1,
+    pCommandBuffers = &ctx.command_buffers[ctx.current_frame],
+    signalSemaphoreCount = 1,
+    pSignalSemaphores = raw_data( signal_semaphores ),
   }
 
-  if res := vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fences[ctx.current_frame]); res != vk.Result.SUCCESS {
-    fmt.println(res)
-    panic("Failed to submit queue")
-  }
+  vk_handler(vk.QueueSubmit(ctx.graphics_queue, 1, &submit_info, ctx.in_flight_fences[ctx.current_frame]))
 
   swap_chains := []vk.SwapchainKHR{ctx.swap_chain}
-  present_info: vk.PresentInfoKHR
-  {
-    present_info.sType = vk.StructureType.PRESENT_INFO_KHR
-    present_info.waitSemaphoreCount = 1
-    present_info.pWaitSemaphores = raw_data( signal_semaphores )
-    present_info.swapchainCount = 1
-    present_info.pSwapchains = raw_data( swap_chains )
-    present_info.pImageIndices = &image_index
-    present_info.pResults = nil
+  present_info := vk.PresentInfoKHR{
+    sType = .PRESENT_INFO_KHR,
+    waitSemaphoreCount = 1,
+    pWaitSemaphores = raw_data( signal_semaphores ),
+    swapchainCount = 1,
+    pSwapchains = raw_data( swap_chains ),
+    pImageIndices = &image_index,
+    pResults = nil,
   }
 
-  if vk.QueuePresentKHR(ctx.present_queue, &present_info) != vk.Result.SUCCESS {
-    panic("Failed to present")
-  }
+  vk_handler(vk.QueuePresentKHR(ctx.present_queue, &present_info))
 
   ctx.current_frame = (ctx.current_frame + 1) % MAX_FRAMES_IN_FLIGHT
 }

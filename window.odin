@@ -7,8 +7,8 @@ import "base:runtime"
 WIDTH :: 800
 HEIGHT :: 600
 
-MODEL_PATH :: "models/viking_room.obj"
-TEXTURE_PATH :: "textures/viking_room.png"
+MODEL_PATH :: "models/f22.obj"
+TEXTURE_PATH :: "textures/f22.png"
 
 
 glfw_error_callback :: proc "c" (error: i32, description: cstring ){
