@@ -11,15 +11,13 @@ import glfw_bindings "vendor:glfw/bindings"
 device_extensions := []cstring{vk.KHR_SWAPCHAIN_EXTENSION_NAME}
 
 create_vk_instance :: proc(ctx: ^Context) {
-  app_info: vk.ApplicationInfo
-
-  {
-    app_info.sType = vk.StructureType.APPLICATION_INFO
-    app_info.pApplicationName = "Hello Triangle"
-    app_info.applicationVersion = vk.MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "NoEngine"
-    app_info.engineVersion = vk.MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = vk.API_VERSION_1_4
+  app_info := vk.ApplicationInfo{
+    sType = .APPLICATION_INFO,
+    pApplicationName = "Hello Triangle",
+    applicationVersion = vk.MAKE_VERSION(1, 0, 0),
+    pEngineName = "NoEngine",
+    engineVersion = vk.MAKE_VERSION(1, 0, 0),
+    apiVersion = vk.API_VERSION_1_4,
   }
 
   create_info: vk.InstanceCreateInfo
@@ -36,10 +34,7 @@ create_vk_instance :: proc(ctx: ^Context) {
     create_info.enabledLayerCount = 0
   }
 
-  vk_result := vk.CreateInstance(&create_info, nil, &ctx.instance)
-  if vk_result != vk.Result.SUCCESS {
-    panic("Failed creation")
-  }
+  vk_handler(vk.CreateInstance(&create_info, nil, &ctx.instance))
 }
 
 check_validation_layer_support :: proc (ctx: ^Context) -> bool {
@@ -146,8 +141,22 @@ create_logical_device :: proc (ctx: ^Context) {
     samplerAnisotropy = true,
     sampleRateShading = true,
   }
+
+  dynamic_features := vk.PhysicalDeviceExtendedDynamicStateFeaturesEXT{
+    sType = .PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT,
+    extendedDynamicState = true,
+  }
+
+  vulkan13_features := vk.PhysicalDeviceVulkan13Features{
+    sType = .PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+    pNext = &dynamic_features,
+    synchronization2 = true,
+    dynamicRendering = true,
+  }
+
   device_create_info := vk.DeviceCreateInfo{
     sType = .DEVICE_CREATE_INFO,
+    pNext = &vulkan13_features,
     pQueueCreateInfos = raw_data(queue_create_infos),
     queueCreateInfoCount = u32(len(&queue_create_infos)),
     pEnabledFeatures = &device_features,
