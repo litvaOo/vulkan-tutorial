@@ -66,7 +66,66 @@ draw_frame :: proc(ctx: ^Context) {
   vk.ResetFences(ctx.logical_device, 1, &ctx.in_flight_fences[ctx.current_frame])
 
   vk.ResetCommandBuffer(ctx.command_buffers[ctx.current_frame], vk.CommandBufferResetFlags{vk.CommandBufferResetFlag.RELEASE_RESOURCES})
-  record_command_buffer(ctx, image_index)
+  record_command_buffer: {
+      begin_info: vk.CommandBufferBeginInfo
+      {
+        begin_info.sType = vk.StructureType.COMMAND_BUFFER_BEGIN_INFO
+      }
+
+      vk_handler(vk.BeginCommandBuffer(ctx.command_buffers[ctx.current_frame], &begin_info))
+
+      clear_values : [2]vk.ClearValue
+      clear_values[0].color = {float32 = {0.0, 0.0, 0.0, 1.0}}
+      clear_values[1].depthStencil = {1.0, 0}
+      render_pass_info: vk.RenderPassBeginInfo
+      { 
+        render_pass_info.sType = vk.StructureType.RENDER_PASS_BEGIN_INFO
+        render_pass_info.renderPass = ctx.render_pass
+        render_pass_info.framebuffer = ctx.swap_chain_framebuffers[image_index]
+        render_pass_info.renderArea.offset = {0, 0}
+        render_pass_info.renderArea.extent = ctx.swap_chain_extent
+        render_pass_info.clearValueCount = u32(len(clear_values))
+        render_pass_info.pClearValues = raw_data(&clear_values)
+      }
+
+      vertex_buffers := []vk.Buffer{ctx.vertex_buffer}
+      offsets := []vk.DeviceSize{0}
+
+      vk.CmdBeginRenderPass(ctx.command_buffers[ctx.current_frame], &render_pass_info, vk.SubpassContents.INLINE)
+      bindings: {
+        vk.CmdBindPipeline(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.graphics_pipeline)
+        vk.CmdBindVertexBuffers(ctx.command_buffers[ctx.current_frame], 0, 1, raw_data(vertex_buffers), raw_data(offsets))
+        vk.CmdBindIndexBuffer(ctx.command_buffers[ctx.current_frame], ctx.index_buffer, 0, vk.IndexType.UINT32)
+        vk.CmdBindDescriptorSets(ctx.command_buffers[ctx.current_frame], vk.PipelineBindPoint.GRAPHICS, ctx.pipeline_layout, 0, 1, &ctx.descriptor_sets[ctx.current_frame], 0, nil)
+      }
+
+      viewport: vk.Viewport
+      {
+        viewport.x = 0.0
+        viewport.y = 0.0
+        viewport.width = f32( ctx.swap_chain_extent.width )
+        viewport.height = f32( ctx.swap_chain_extent.height )
+        viewport.minDepth = 0.0
+        viewport.maxDepth = 1.0
+      }
+      vk.CmdSetViewport(ctx.command_buffers[ctx.current_frame], 0, 1, &viewport)
+
+      scissor: vk.Rect2D
+      {
+        scissor.offset = {0, 0}
+        scissor.extent = ctx.swap_chain_extent
+      }
+      vk.CmdSetScissor(ctx.command_buffers[ctx.current_frame], 0, 1, &scissor)
+
+      vk.CmdDrawIndexed(ctx.command_buffers[ctx.current_frame], u32(len(ctx.indices)), 1, 0, 0, 0)
+
+      vk.CmdEndRenderPass(ctx.command_buffers[ctx.current_frame])
+
+      if vk.EndCommandBuffer(ctx.command_buffers[ctx.current_frame]) != vk.Result.SUCCESS {
+        panic("Failed to finish command buffer")
+      }
+
+  }
 
   update_uniform_buffer(ctx)
 
