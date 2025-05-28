@@ -133,35 +133,30 @@ create_logical_device :: proc (ctx: ^Context) {
   queue_create_infos := make([dynamic]vk.DeviceQueueCreateInfo)
 
   for queue in unique_queue_families {
-    queue_create_info : vk.DeviceQueueCreateInfo
-    queue_create_info.sType = vk.StructureType.DEVICE_QUEUE_CREATE_INFO
-    queue_create_info.queueFamilyIndex = queue_family_indices.graphics_family
-    queue_create_info.queueCount = 1
-    queue_priorities := make([^]f32, 1)
-    queue_priorities[0] = 1.0
-    queue_create_info.pQueuePriorities = queue_priorities
+    queue_create_info := vk.DeviceQueueCreateInfo{
+      sType = .DEVICE_QUEUE_CREATE_INFO,
+      queueFamilyIndex = queue_family_indices.graphics_family,
+      queueCount = 1,
+      pQueuePriorities = raw_data([]f32{1.0}),
+    }
     append(&queue_create_infos, queue_create_info)
   }
 
-  device_features : vk.PhysicalDeviceFeatures
-  device_features.samplerAnisotropy = true
-  device_features.sampleRateShading = true
-  device_create_info : vk.DeviceCreateInfo
-  {
-    device_create_info.sType = vk.StructureType.DEVICE_CREATE_INFO
-    device_create_info.pQueueCreateInfos = raw_data(queue_create_infos)
-    device_create_info.queueCreateInfoCount = u32(len(&queue_create_infos))
-    device_create_info.pEnabledFeatures = &device_features
-    device_create_info.enabledExtensionCount = u32(len(device_extensions))
-    device_create_info.ppEnabledExtensionNames = raw_data(device_extensions)
-    device_create_info.enabledLayerCount = 0
-    
+  device_features := vk.PhysicalDeviceFeatures{
+    samplerAnisotropy = true,
+    sampleRateShading = true,
+  }
+  device_create_info := vk.DeviceCreateInfo{
+    sType = .DEVICE_CREATE_INFO,
+    pQueueCreateInfos = raw_data(queue_create_infos),
+    queueCreateInfoCount = u32(len(&queue_create_infos)),
+    pEnabledFeatures = &device_features,
+    enabledExtensionCount = u32(len(device_extensions)),
+    ppEnabledExtensionNames = raw_data(device_extensions),
+    enabledLayerCount = 0, 
   }
 
-  if vk.CreateDevice(ctx.physical_device, &device_create_info, nil, &ctx.logical_device) != vk.Result.SUCCESS {
-    panic("Failed to create a logical device")
-  }
-
+  vk_handler( vk.CreateDevice(ctx.physical_device, &device_create_info, nil, &ctx.logical_device) )
   vk.GetDeviceQueue(ctx.logical_device, queue_family_indices.graphics_family, 0, &ctx.graphics_queue)
   vk.GetDeviceQueue(ctx.logical_device, queue_family_indices.present_family, 0, &ctx.present_queue)
 }
